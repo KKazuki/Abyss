@@ -1,0 +1,31 @@
+# Portal Wand Configuration
+wand-name: Portal Wand
+wand-material: STICK
+
+
+# Default Network Configuration
+network-key: SKULL ITEM:3
+network-color: WHITE
+
+
+# Portal Dimensions
+minimum-depth: 2
+minimum-size: 2
+maximum-size: 4
+# maximum-modifiers: 10  # defaults to maximum-size
+
+
+# Portal Configuration
+minimum-velocity: 0.15
+maximum-velocity: 10     # We set this to avoid hitting moved-too-quickly.
+cooldown-ticks: 300
+
+# Distance Calculations
+limit-distance: true
+base-range: 100
+depth-multiplier: 50
+
+# Whether or not to use WorldGuard for region storage.
+# This is generally good since WorldGuard uses a proper tree for regions, which
+# is much nicer than our silly little per-world lists.
+use-worldguard: true

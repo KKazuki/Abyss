@@ -1,0 +1,13 @@
+# Compiled Output
+/out/
+
+# System Cruft
+Thumbs.db
+.DS_Store
+
+# IntelliJ IDEA Project
+/.idea/
+/*.iml
+
+# Working Configuration
+/*.yml

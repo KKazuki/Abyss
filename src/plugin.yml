@@ -1,0 +1,30 @@
+name: Abyss
+version: 1
+description: A water-based portal system for players.
+author: Stendec <me@stendec.me>
+
+main: me.stendec.abyss.AbyssPlugin
+softdepend: [WorldGuard]
+
+permissions:
+    abyss.*:
+        description: Gives access to all of Abyss.
+        children:
+            abyss.modifiers.*: true
+            abyss.use: true
+    abyss.use:
+        description: Allows you to travel through a portal.
+        default: true
+
+    abyss.modifiers.*:
+        description: Gives access to all Abyss modifiers.
+        children:
+            abyss.modifiers.bed: true
+            abyss.modifiers.compass: true
+
+    abyss.modifiers.bed:
+        description: Allows you to use the Bed portal modifier.
+        default: op
+    abyss.modifiers.compass:
+        description: Allows you to use the Compass portal modifier.
+        default: op

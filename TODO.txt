@@ -1,0 +1,94 @@
+Portal TO-DO
+
+Base Mechanics
+
+DONE	Naming for Easy Reference
+DONE	  - Auto-generation by owner/order? Like ixokai-3?
+
+DONE	Block Protection
+DONE	  - BlockBreakEvent
+DONE	  - BlockBurnEvent
+DONE	  - BlockFadeEvent
+DONE	  - BlockFormEvent
+DONE	  - BlockFromToEvent
+DONE	      - Fix water flowing not updating a portal.
+DONE	  - BlockIgniteEvent
+DONE	  - BlockPhysicsEvent
+DONE	  - BlockPistonExtendEvent
+DONE	  - BlockPistonRetractEvent
+DONE	  - BlockPlaceEvent
+DONE	  - EntityChangeBlockEvent
+DONE	  - LeavesDecayEvent
+DONE	  - StructureGrowEvent
+
+DONE	Iris Detection
+	  - Happens automatically thanks to the block protection.
+
+DONE	Portal Cooldown
+DONE	Static Effect
+	  - Configurable?
+
+DONE	Portal Range
+	  - Tweak to find a good default value.
+
+	Portal Configuration Time Limit
+DONE	Fix Minecarts
+DONE	  - Support minecarts with entities
+	  - Special cross-world code
+
+DONE	Optimise portal block checks.
+	  - Do it again, using new knowledge.
+
+
+Portal Modifiers
+DONE	Add support for a common "silent" flag.
+
+DONE	Execute Both Portals' Modifiers on Teleport
+DONE	Execute Modifiers *after* Successful Teleport
+DONE	Pre-Teleport Event
+
+DONE	Bed - Set Player Spawn
+DONE	Book - Show Message Upon Arrival
+DONE	Buttons & Pressure Plates - Trigger Redstone
+----	Command Block - Execute Command (Support Signs + Books)
+	  - Too Difficult. Just use Button + Command Block
+
+DONE	Compass - Set Compass Target
+DONE	Dispenser - Dispense Items
+1.5	Dropper - Drop Items (Combine with Dispenser)
+????	Emerald Block - Economy / Locking
+DONE	Ender Pearl - Increase Portal Range
+1.5	Hopper - Take Item(s) from Player
+DONE	Obsidian - Prevent Teleporting To	
+DONE	Slime Ball - Increase Velocity
+DONE	Soul Sand - Prevent Teleporting Away
+
+
+Portal Tools
+	Support for Limited Use Tools
+
+	Portal Information
+	Create Portal
+	Destroy Portal
+	Configure Portal
+	Configure Portal Modifier
+	List Destinations
+	Move Modifier Utility Block Location
+	  - For example, make the dispenser modifier draw blocks from a
+	    chest at an arbitrary location.
+
+
+Portal Commands
+	Configuration Reload
+	Wand Spawner
+	List Portals
+	Teleport to Portal
+
+
+Permissions
+	Figure out Permissions
+
+
+Alternate Creation Systems
+	Arcane Ritual (Redstone around hole)
+	Wand Crafting Recipe?
