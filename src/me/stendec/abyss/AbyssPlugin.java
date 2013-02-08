@@ -90,7 +90,6 @@ public final class AbyssPlugin extends JavaPlugin {
     public HashMap<String, ABCommand> commands;
     public HashMap<String, String> aliases;
 
-
     static {
         ConfigurationSerialization.registerClass(FrameInfo.class);
 
@@ -109,7 +108,7 @@ public final class AbyssPlugin extends JavaPlugin {
     @Override
     public void onLoad() {
         // Bare Basics
-        saveDefaultConfig();
+        // saveDefaultConfig();
         portalFile = new File(getDataFolder(), "portals.yml");
 
         // Command Creation
@@ -123,10 +122,12 @@ public final class AbyssPlugin extends JavaPlugin {
         commands.put("list", new ListCommand(this));
         commands.put("teleport", new TeleportCommand(this));
         commands.put("configure", new ConfigureCommand(this));
+        commands.put("modifier", new ModifierCommand(this));
 
         aliases.put("remove", "delete");
         aliases.put("tp", "teleport");
         aliases.put("config", "configure");
+        aliases.put("mod", "modifier");
     }
 
 
@@ -878,10 +879,14 @@ public final class AbyssPlugin extends JavaPlugin {
         final UUID eid = entity.getUniqueId();
         if ( portal.uid.equals(entityLastPortal.get(eid)) ) {
             final Long time = entityLastTime.get(eid);
-            final long now = world.getFullTime();
-            if ( time != null && now < time ) {
+
+            final long at = world.getFullTime();
+            getLogger().info("Now: " + at);
+
+            if ( time != null && at < time ) {
                 // Make sure the cooldown period only works once.
                 entityLastPortal.remove(eid);
+                entityLastTime.remove(eid);
                 return null;
             }
         }
@@ -906,9 +911,9 @@ public final class AbyssPlugin extends JavaPlugin {
         // Iterate through the destinations, trying to teleport until it succeeds.
         if ( destinations.size() > 0 ) {
             for(final ABPortal destination: destinations) {
-                final Location loc = doTeleport(entity, portal, destination, to, delta);
-                if ( loc != null )
-                    return loc;
+                final Entity ent = doTeleport(entity, portal, destination, to, delta);
+                if ( ent != null )
+                    return (ent.equals(entity)) ? ent.getLocation() : null;
             }
         }
 
@@ -925,7 +930,7 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
     @SuppressWarnings("unchecked")
-    public Location doTeleport(final Entity entity, final ABPortal from, final ABPortal to, final Location pos, Vector delta) {
+    public Entity doTeleport(Entity entity, final ABPortal from, final ABPortal to, final Location pos, Vector delta) {
         // Get the destination location.
         Location dest = to.getCenter();
         delta = delta.clone();
@@ -946,13 +951,14 @@ public final class AbyssPlugin extends JavaPlugin {
 
                 // Handle different worlds.
                 if ( ! fc.getWorld().equals(dest.getWorld())) {
-                    fc.setWorld(dest.getWorld());
+                    Location f2 = fc.clone();
+                    f2.setWorld(dest.getWorld());
 
                     double multiplier = 100;
                     if ( from.eyeCount > 0 && to.eyeCount > 0 )
                         multiplier = multiplier / Math.pow(4, from.eyeCount + to.eyeCount);
 
-                    distance = dest.distance(fc) * multiplier;
+                    distance = dest.distance(f2) * multiplier;
 
                 } else {
                     distance = dest.distance(fc);
@@ -961,8 +967,6 @@ public final class AbyssPlugin extends JavaPlugin {
                 // Apply portal depth to the problem.
                 distance -= from.depth * from.rangeMultiplier;
                 distance -= to.depth * to.rangeMultiplier;
-
-                getLogger().info("Distance: " + distance);
 
                 // If distance is still greater than zero, quit right now.
                 if ( distance > 0 )
@@ -1123,6 +1127,10 @@ public final class AbyssPlugin extends JavaPlugin {
         dest = event.getDestination();
         delta = event.getVelocity();
 
+        // Make sure the area we're teleporting to is loaded.
+        if ( ! dest.getChunk().isLoaded() )
+            dest.getChunk().load();
+
         // If the entity has a passenger, we have to teleport them separately.
         Entity passenger = null;
         if ( !entity.isEmpty() ) {
@@ -1133,17 +1141,34 @@ public final class AbyssPlugin extends JavaPlugin {
                 return null;
 
             // If we can't teleport the passenger, abort.
-            if ( doTeleport(passenger, from, to, passenger.getLocation(), delta) == null ) {
+            Entity ent = doTeleport(passenger, from, to, passenger.getLocation(), delta);
+            if ( ent == null ) {
                 // Put the passenger back first.
                 entity.setPassenger(passenger);
                 return null;
+            } else {
+                passenger = ent;
             }
         }
 
         // Teleport the entity. This is the last point that can return null.
-        if ( ! entity.teleport(dest, PlayerTeleportEvent.TeleportCause.PLUGIN) ) {
+        // This has a chance of cloning the entity and returning a new one,
+        // because Minecraft entities are weird.
+        Entity after_port = EntityUtils.teleport(entity, dest, PlayerTeleportEvent.TeleportCause.PLUGIN);
+        if ( after_port == null ) {
             // If we can't go... too bad for the passenger!
             return null;
+        } else {
+            // Check to see if the old entity is in the cooldown list, and
+            // remove it to keep things tidy.
+            final UUID uid = entity.getUniqueId();
+            if ( entityLastPortal.containsKey(uid) )
+                entityLastPortal.remove(uid);
+
+            if ( entityLastTime.containsKey(uid) )
+                entityLastTime.remove(uid);
+
+            entity = after_port;
         }
 
         // Set the entity's velocity and fall distance.
@@ -1153,10 +1178,11 @@ public final class AbyssPlugin extends JavaPlugin {
         // Recover our passenger, after a slight delay.
         if ( passenger != null ) {
             final Entity p = passenger;
+            final Entity e = entity;
             getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
                 @Override
                 public void run() {
-                    entity.setPassenger(p);
+                    e.setPassenger(p);
                 }
             }, 5L);
         }
@@ -1208,10 +1234,14 @@ public final class AbyssPlugin extends JavaPlugin {
         // Set cooldown information.
         final UUID eid = entity.getUniqueId();
         entityLastPortal.put(eid, to.uid);
-        entityLastTime.put(eid, entity.getWorld().getFullTime() + cooldownTicks);
+
+        long at = entity.getWorld().getFullTime() + cooldownTicks;
+        getLogger().info("Set to: " + at);
+
+        entityLastTime.put(eid, at);
 
         // Return the destination.
-        return dest;
+        return entity;
     }
 
 

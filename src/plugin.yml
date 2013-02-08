@@ -4,7 +4,7 @@ description: A water-based portal system for players.
 author: Stendec <me@stendec.me>
 
 main: me.stendec.abyss.AbyssPlugin
-softdepend: [WorldGuard, Vault]
+softdepend: [BKCommonLib, WorldGuard, Vault]
 
 commands:
     abyss:

@@ -18,7 +18,7 @@ maximum-size: 4
 # Portal Configuration
 minimum-velocity: 0.15
 maximum-velocity: 10     # We set this to avoid hitting moved-too-quickly.
-cooldown-ticks: 300
+cooldown-ticks: 40
 
 # Distance Calculations
 limit-distance: true

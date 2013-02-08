@@ -1,5 +1,6 @@
 package me.stendec.abyss.listeners;
 
+import com.google.common.base.Joiner;
 import me.stendec.abyss.*;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
@@ -174,7 +175,7 @@ public class PlayerListener implements Listener {
         event.setCancelled(true);
 
         if (! portal.canManipulate(player) ) {
-            t().red("Access Denied").send(player);
+            t().red("Permission Denied").send(player);
             return;
         }
 
@@ -192,7 +193,7 @@ public class PlayerListener implements Listener {
 
         // Check for the Modifier wand.
         final String tool = plugin.validatePortalWand(item);
-        final boolean mtool = tool != null && (tool.equals("mod") || tool.equals("modifier"));
+        final boolean mtool = tool != null && tool.equals("modifier");
         if (mtool && info.type != FrameInfo.Frame.MOD) {
             t().red("You must click a modifier frame to use the modifier wand.").send(player);
             return;
@@ -225,7 +226,32 @@ public class PlayerListener implements Listener {
                     if ( ! item.getItemMeta().hasLore() )
                         throw new IllegalArgumentException("This modifier wand has no configuration to apply.");
 
-                    final Map<String, String> config = ParseUtils.tokenizeLore(item.getItemMeta().getLore());
+                    List<String> lore = item.getItemMeta().getLore();
+                    ArrayList<String> args = new ArrayList<String>();
+                    int uses = 0;
+
+                    if ( lore != null )
+                        for(final String l: lore) {
+                            final String plain = ChatColor.stripColor(l).toLowerCase();
+                            if ( plain.startsWith("remaining uses: ") ) {
+                                try {
+                                    uses = Integer.parseInt(plain.substring(16));
+                                } catch(NumberFormatException ex) {
+                                    t().red("Invalid Remaining Use Count: ").reset(plain).send(player);
+                                    return;
+                                }
+                            } else {
+                                // Do a stupid space split, since that's what Bukkit does.
+                                args.addAll(Arrays.asList(l.split("\\s")));
+                            }
+                        }
+
+                    // Remove empty strings.
+                    for(Iterator<String> it = args.iterator(); it.hasNext(); )
+                        if ( it.next().trim().length() == 0 )
+                            it.remove();
+
+                    Map<String, String> config = ParseUtils.tokenize(Joiner.on(" ").skipNulls().join(args).trim());
                     if (config != null && config.size() > 0)
                         for(final Map.Entry<String,String> entry: config.entrySet()) {
                             String key = entry.getKey();
@@ -238,8 +264,48 @@ public class PlayerListener implements Listener {
                             }
                         }
 
-                    t().gold("Portal [").yellow(portal.getName()).gold("]").
-                            white("'s modifier was updated successfully.").send(player);
+                    // Since it was a success, decrement the uses for our wand.
+                    if ( uses > 0 && player.getGameMode() != GameMode.CREATIVE ) {
+                        ItemStack rest = null;
+
+                        if ( uses > 1 ) {
+                            // If it's part of a stack, we'll want to split it up here.
+                            if ( item.getAmount() > 1 ) {
+                                rest = item.clone();
+                                rest.setAmount(item.getAmount() - 1);
+
+                                item.setAmount(1);
+                            }
+
+                            for(int i=0; i < lore.size(); i++) {
+                                String l = lore.get(i);
+                                final String plain = ChatColor.stripColor(l).toLowerCase();
+                                if ( ! plain.startsWith("remaining uses: ") )
+                                    continue;
+
+                                // Replace the uses remaining. Try to preserve color codes.
+                                lore.set(i, l.replace(plain.substring(16), Integer.toString(uses - 1)));
+                            }
+
+                            // Apply the new lore.
+                            final ItemMeta im = item.getItemMeta();
+                            im.setLore(lore);
+                            item.setItemMeta(im);
+
+                        } else if ( uses == 1 ) {
+                            // Destroy the wand.
+                            player.setItemInHand(null);
+                        }
+
+                        // If we've got extra items, add them.
+                        if ( rest != null ) {
+                            for(final ItemStack dnf: player.getInventory().addItem(rest).values())
+                                player.getWorld().dropItemNaturally(player.getLocation(), dnf);
+                            player.updateInventory();
+                        }
+                    }
+
+                    portal.getDisplayName().darkgreen("'s modifier was updated successfully.").send(player);
                     return;
                 }
 
@@ -286,8 +352,8 @@ public class PlayerListener implements Listener {
                     portal.setPartialDestination(color.getWoolData() + 1, false);
             }
         } catch(IllegalArgumentException ex) {
-            t().red("Error Configuring Portal").lf().
-                gray("    ").append(ex.getMessage()).send(player);
+            t().red("Error Configuring Portal").send(player);
+            t("    ").gray(ex.getMessage()).send(player);
         }
 
     }

@@ -60,7 +60,7 @@ public class ItemListener implements Listener {
         ItemFrame frame = (ItemFrame) entity;
 
         if (!portal.canManipulate(player)) {
-            t().red("Access Denied").send(player);
+            t().red("Permission Denied").send(player);
             return;
         }
 
@@ -89,7 +89,7 @@ public class ItemListener implements Listener {
                         if ( delta < 100L ) {
                             // Destroy the portal.
                             plugin.portalDestroyTime.remove(portal.uid);
-                            ColorBuilder p = t().gold("Portal [").yellow(portal.getName()).gold("]");
+                            ColorBuilder p = portal.getDisplayName();
                             if (!plugin.getManager().destroy(portal))
                                 p.red(" could not be deleted.").send(player);
                             else
