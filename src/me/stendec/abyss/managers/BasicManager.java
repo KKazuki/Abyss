@@ -1,4 +1,4 @@
-package me.stendec.abyss.manager;
+package me.stendec.abyss.managers;
 
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;

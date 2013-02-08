@@ -1,4 +1,4 @@
-package me.stendec.abyss.manager;
+package me.stendec.abyss.managers;
 
 import com.sk89q.worldedit.BlockVector;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;

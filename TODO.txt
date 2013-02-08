@@ -67,10 +67,10 @@ DONE	Soul Sand - Prevent Teleporting Away
 Portal Tools
 	Support for Limited Use Tools
 
-	Portal Information
-	Create Portal
-	Destroy Portal
-	Configure Portal
+DONE	Portal Information
+DONE	Create Portal
+DONE	Destroy Portal
+DONE	Configure Portal
 	Configure Portal Modifier
 	List Destinations
 	Move Modifier Utility Block Location
@@ -80,9 +80,9 @@ Portal Tools
 
 Portal Commands
 	Configuration Reload
-	Wand Spawner
-	List Portals
-	Teleport to Portal
+DONE	Wand Spawner
+DONE	List Portals
+DONE	Teleport to Portal
 
 
 Permissions

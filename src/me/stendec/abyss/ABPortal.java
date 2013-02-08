@@ -1,6 +1,7 @@
 package me.stendec.abyss;
 
 import com.sk89q.worldedit.BlockVector;
+import me.stendec.abyss.util.ColorBuilder;
 import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -11,12 +12,10 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.metadata.MetadataValue;
 
 import java.util.*;
 
-public class ABPortal {
+public class ABPortal implements Comparable<ABPortal> {
 
     private final AbyssPlugin plugin;
 
@@ -53,7 +52,9 @@ public class ABPortal {
     // Modifiers
     public double velocityMultiplier;
     public double rangeMultiplier;
+
     public boolean mod_invalid;
+    public int eyeCount;
 
     public ArrayList<ModInfo> mods;
 
@@ -95,11 +96,16 @@ public class ABPortal {
         mod_invalid = false;
 
         velocityMultiplier = 1;
+        eyeCount = 0;
         rangeMultiplier = plugin.rangeMultiplier;
     }
 
     public final AbyssPlugin getPlugin() {
         return plugin;
+    }
+
+    public int compareTo(ABPortal other) {
+        return getName().compareTo(other.getName());
     }
 
     // Loading and Saving
@@ -148,6 +154,7 @@ public class ABPortal {
         }
 
         mod_invalid = config.getBoolean("mod_invalid", mod_invalid);
+        eyeCount = config.getInt("eye-count", eyeCount);
 
         // Handle the mod items.
         if (config.isConfigurationSection("mods")) {
@@ -227,6 +234,9 @@ public class ABPortal {
         if (rangeMultiplier != plugin.rangeMultiplier)
             config.set("rangeMultiplier", rangeMultiplier);
 
+        if ( eyeCount != 0 )
+            config.set("eye-count", eyeCount);
+
         config.set("depth", depth);
         config.set("size", size);
 
@@ -273,6 +283,15 @@ public class ABPortal {
 
     // Name
 
+    public ColorBuilder getDisplayName() {
+        return getDisplayName(false);
+    }
+
+    public ColorBuilder getDisplayName(final boolean bold) {
+        String b = ( bold ) ? ChatColor.BOLD.toString() : "";
+        return new ColorBuilder().gold(b).append("Portal [").yellow(getName()).gold(b).append("]");
+    }
+
     public void setName(final String name) {
         Validate.notNull(name);
 
@@ -295,7 +314,8 @@ public class ABPortal {
         final PortalManager manager = plugin.getManager();
 
         while(true) {
-            name = String.format("%s-%d", owner, plugin.getIdFor(owner));
+            final String lowner = owner.toLowerCase();
+            name = String.format("%s-%d", lowner, plugin.getIdFor(lowner));
             if ( manager.getByName(name) == null )
                 break;
         }
@@ -305,26 +325,6 @@ public class ABPortal {
 
 
     // Configuration
-
-    public void applyMetadata(ItemFrame frame) {
-        // Check if it's a mod.
-        if (mods != null)
-            for(ModInfo info: mods) {
-                ItemFrame f = info.frame.getFrame();
-                if (f != null && f.equals(frame)) {
-                    applyMetadata(frame, info);
-                    return;
-                }
-            }
-
-        applyMetadata(frame, null);
-    }
-
-    public void applyMetadata(ItemFrame frame, ModInfo info) {
-        frame.setMetadata("abyss_portal", new FixedMetadataValue(plugin, this.uid));
-        if (info != null)
-            frame.setMetadata("abyss_mod", new FixedMetadataValue(plugin, info));
-    }
 
     public void update() {
         boolean changed = false;
@@ -393,9 +393,14 @@ public class ABPortal {
     }
 
     public ModInfo getModFromFrame(final ItemFrame frame) {
-        for(MetadataValue value: frame.getMetadata("abyss_mod"))
-            if (value.getOwningPlugin().equals(plugin))
-                return (ModInfo) value.value();
+        if ( mods == null )
+            return null;
+
+        final UUID uid = frame.getUniqueId();
+        for(final ModInfo info: mods) {
+            if ( info.frame != null && uid.equals(info.frame.id) )
+                return info;
+        }
 
         return null;
     }
@@ -689,6 +694,9 @@ public class ABPortal {
                 frame.remove();
         }
 
+        // Remove from the manager.
+        plugin.getManager().removeFrames(this);
+
         // Now, clear out the instances.
         frames.clear();
         frameIDs.clear();
@@ -776,9 +784,7 @@ public class ABPortal {
 
         frames.put(type, info);
         frameIDs.put(info.id, info);
-
-        // Set metadata.
-        applyMetadata(frame, null);
+        plugin.getManager().addFrame(this, frame);
 
         return frame;
     }
@@ -795,12 +801,10 @@ public class ABPortal {
         info.updateLocation();
 
         frameIDs.put(f.id, f);
+        plugin.getManager().addFrame(this, frame);
 
         // Make sure the frame is showing the right item.
         frame.setItem(info.item);
-
-        // Set metadata.
-        applyMetadata(frame, info);
 
         return frame;
     }
@@ -921,6 +925,9 @@ public class ABPortal {
         setIDFrames(id, if_id1, if_id2);
         setIDFrames(destination, if_dest1, if_dest2);
 
+
+        // Add this portal's frames to the manager.
+        plugin.getManager().addFrames(this);
     }
 
     private void setIDFrames(short value, ItemFrame frame1, ItemFrame frame2) {

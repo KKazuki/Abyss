@@ -4,7 +4,13 @@ description: A water-based portal system for players.
 author: Stendec <me@stendec.me>
 
 main: me.stendec.abyss.AbyssPlugin
-softdepend: [WorldGuard]
+softdepend: [WorldGuard, Vault]
+
+commands:
+    abyss:
+        description: Something something.
+        usage: /<command> [subcommand]
+        permission: abyss.command.base
 
 permissions:
     abyss.*:
@@ -12,6 +18,7 @@ permissions:
         children:
             abyss.modifiers.*: true
             abyss.use: true
+
     abyss.use:
         description: Allows you to travel through a portal.
         default: true
@@ -28,3 +35,41 @@ permissions:
     abyss.modifiers.compass:
         description: Allows you to use the Compass portal modifier.
         default: op
+
+    abyss.command.*:
+        description: Gives access to all Abyss commands.
+        children:
+            abyss.command.base: true
+            abyss.command.configure: true
+            abyss.command.create: true
+            abyss.command.delete: true
+            abyss.command.info: true
+            abyss.command.list: true
+            abyss.command.teleport: true
+            abyss.command.wand: true
+
+    abyss.command.base:
+        description: Gives access to the /abyss command.
+        default: op
+
+    abyss.command.configure:
+        description: Gives access to the Configure command.
+        default: op
+    abyss.command.create:
+        description: Gives access to the Create command.
+        default: op
+    abyss.command.delete:
+        description: Gives access to the Delete command.
+        default: op
+    abyss.command.info:
+        description: Gives access to the Info command.
+        default: true
+    abyss.command.list:
+        description: Gives access to the List command.
+        default: op
+    abyss.command.teleport:
+        description: Gives access to the Teleport command.
+        default: op
+    abyss.command.wand:
+        description: Gives access to the Wand command.
+        default: true

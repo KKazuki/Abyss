@@ -1,4 +1,4 @@
-package me.stendec.abyss.event;
+package me.stendec.abyss.events;
 
 import me.stendec.abyss.ABPortal;
 import org.apache.commons.lang.Validate;

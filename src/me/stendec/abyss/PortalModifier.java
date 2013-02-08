@@ -45,10 +45,8 @@ public abstract class PortalModifier {
     public boolean hasPermission(final Player player, final ABPortal portal, final ModInfo info, final ItemStack item) {
         final String key = item.getType().name().toLowerCase();
         Permission perm = portal.getPlugin().getServer().getPluginManager().getPermission("abyss.modifiers." + key);
-        if ( perm == null ) {
-            portal.getPlugin().getLogger().info("No permission: abyss.modifiers." + key);
+        if ( perm == null )
             return true;
-        }
 
         return player.hasPermission(perm);
     }

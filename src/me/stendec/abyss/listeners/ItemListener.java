@@ -39,9 +39,11 @@ public class ItemListener implements Listener {
     @EventHandler(priority =  EventPriority.LOW)
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
         Hanging entity = event.getEntity();
+        if (! (entity instanceof ItemFrame) )
+            return;
 
         // If there's no portal, we don't care.
-        final ABPortal portal = plugin.getManager().getByMetadata(event.getEntity());
+        final ABPortal portal = plugin.getManager().getByFrame((ItemFrame) entity);
         if (portal == null)
             return;
 
@@ -112,7 +114,7 @@ public class ItemListener implements Listener {
 
             } else if (info.type == FrameInfo.Frame.MOD) {
                 ItemStack n = portal.removeMod(player, frame);
-                if ( n.getType() == Material.AIR )
+                if ( n == null || n.getType() == Material.AIR )
                     return;
 
                 // Don't drop the item if the player is in creative mode.
@@ -154,7 +156,7 @@ public class ItemListener implements Listener {
     @EventHandler
     public void onHangingBreak(HangingBreakEvent event) {
         // If there's no portal, we don't care.
-        final ABPortal portal = plugin.getManager().getByMetadata(event.getEntity());
+        final ABPortal portal = plugin.getManager().getByFrame(event.getEntity());
         if (portal == null)
             return;
 

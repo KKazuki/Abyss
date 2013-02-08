@@ -11,7 +11,11 @@ import java.util.*;
 public class ParseUtils {
 
     public static String prettyName(final Material mat) {
-        return WordUtils.capitalize(mat.name().replaceAll("_+", " "));
+        return WordUtils.capitalize(mat.name().toLowerCase().replaceAll("_+", " "));
+    }
+
+    public static String prettyName(final DyeColor color) {
+        return WordUtils.capitalize(color.name().toLowerCase().replaceAll("_+", " "));
     }
 
     public static String prettyName(final ItemStack item) {
@@ -19,9 +23,9 @@ public class ParseUtils {
         String out = prettyName(mat);
 
         if ( mat == Material.WOOL )
-            out += " (" + WordUtils.capitalize(((Wool) item.getData()).getColor().name()) + ")";
+            out += " (" + prettyName(((Wool) item.getData()).getColor()) + ")";
         else if ( mat == Material.INK_SACK )
-            out += " (" + WordUtils.capitalize(((Dye) item.getData()).getColor().name()) + ")";
+            out += " (" + prettyName(((Dye) item.getData()).getColor()) + ")";
         else if ( item.getDurability() != 0 )
             out += " (" + item.getDurability() + ")";
 
@@ -88,6 +92,33 @@ public class ParseUtils {
         return result;
     }
 
+    public static Location matchLocation(final String value) {
+        return matchLocation(value, null);
+    }
+
+    public static Location matchLocation(final String value, World world) {
+        if ( value == null || ! value.contains(",") )
+            return null;
+
+        final String[] pairs = value.split("\\s*,\\s*", 4);
+
+        if ( pairs.length == 4 )
+            world = Bukkit.getWorld(pairs[3]);
+
+        if ( world == null )
+            return null;
+
+        try {
+            return new Location(world,
+                    Double.parseDouble(pairs[0]),
+                    Double.parseDouble(pairs[1]),
+                    Double.parseDouble(pairs[2]));
+
+        } catch(NumberFormatException ex) {
+            return null;
+        }
+    }
+
 
     public static ItemStack matchItem(final String value) {
         if (value == null)
@@ -111,23 +142,31 @@ public class ParseUtils {
         return new ItemStack(material, 1, damage);
     }
 
+    public static Map<String, String> tokenize(String item) {
+        HashMap<String, String> out = new HashMap<String, String>();
+        if ( item == null || item.length() == 0 )
+            return out;
+
+        for(final String pair: item.trim().split("\\s*;\\s*")) {
+            if ( ! pair.contains(":") ) {
+                out.put(pair.toLowerCase(), "");
+                continue;
+            }
+
+            final String[] kv = pair.split("\\s*:\\s*", 2);
+            out.put(kv[0].toLowerCase(), kv[1]);
+        }
+
+        return out;
+    }
 
     public static Map<String, String> tokenizeLore(List<String> lore) {
         HashMap<String, String> out = new HashMap<String, String>();
         if ( lore == null || lore.size() == 0 )
             return out;
 
-        for(String string: lore) {
-            for(String pair: string.trim().split("\\s*;\\s*")) {
-                String[] kv;
-                if ( pair.contains(":") )
-                    kv = pair.split("\\s*:\\s*", 2);
-                else
-                    kv = new String[]{pair, ""};
-
-                out.put(kv[0].toLowerCase(), kv[1]);
-            }
-        }
+        for(String string: lore)
+            out.putAll(tokenize(string));
 
         return out;
     }

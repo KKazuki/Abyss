@@ -1,11 +1,13 @@
 package me.stendec.abyss;
 
+import com.google.common.base.Joiner;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import me.stendec.abyss.event.AbyssPreTeleportEvent;
+import me.stendec.abyss.commands.*;
+import me.stendec.abyss.events.AbyssPreTeleportEvent;
 import me.stendec.abyss.listeners.*;
 
-import me.stendec.abyss.manager.BasicManager;
-import me.stendec.abyss.manager.WorldGuardManager;
+import me.stendec.abyss.managers.BasicManager;
+import me.stendec.abyss.managers.WorldGuardManager;
 import me.stendec.abyss.modifiers.*;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.EntityUtils;
@@ -15,6 +17,9 @@ import org.bukkit.*;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -24,13 +29,17 @@ import org.bukkit.entity.*;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.permissions.Permission;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -74,9 +83,12 @@ public final class AbyssPlugin extends JavaPlugin {
 
     private boolean useWorldGuard;
 
-
     // Portal Effect Task
     private BukkitTask task;
+
+    // Command Storage
+    public HashMap<String, ABCommand> commands;
+    public HashMap<String, String> aliases;
 
 
     static {
@@ -90,13 +102,31 @@ public final class AbyssPlugin extends JavaPlugin {
         PortalModifier.register(new EnderPearlModifier(), Material.ENDER_PEARL);
         PortalModifier.register(new BookModifier(), Material.BOOK, Material.BOOK_AND_QUILL, Material.WRITTEN_BOOK);
         PortalModifier.register(new CompassModifier(), Material.COMPASS);
+        PortalModifier.register(new EyeOfEnderModifier(), Material.EYE_OF_ENDER);
     }
+
 
     @Override
     public void onLoad() {
         // Bare Basics
         saveDefaultConfig();
         portalFile = new File(getDataFolder(), "portals.yml");
+
+        // Command Creation
+        commands = new HashMap<String, ABCommand>();
+        aliases = new HashMap<String, String>();
+
+        commands.put("info", new InfoCommand(this));
+        commands.put("wand", new WandCommand(this));
+        commands.put("create", new CreateCommand(this));
+        commands.put("delete", new DeleteCommand(this));
+        commands.put("list", new ListCommand(this));
+        commands.put("teleport", new TeleportCommand(this));
+        commands.put("configure", new ConfigureCommand(this));
+
+        aliases.put("remove", "delete");
+        aliases.put("tp", "teleport");
+        aliases.put("config", "configure");
     }
 
 
@@ -113,8 +143,35 @@ public final class AbyssPlugin extends JavaPlugin {
         // Load Configuration
         configure();
 
-        // FINE!
-        getLogger().setLevel(Level.FINEST);
+
+        // If we can get the right command map, add aliases to our command.
+        CommandMap map = getCommandMap();
+        final Command cmd = getCommand("abyss");
+        if ( cmd != null && map != null && cmd.unregister(map) ) {
+            // Add our dynamic aliases, and update the usage string.
+            List<String> als = cmd.getAliases();
+
+            for(final String key: commands.keySet()) {
+                final String ckey = "ab" + key;
+                if ( ! als.contains(ckey) )
+                    als.add(ckey);
+            }
+
+            for(final String key: aliases.keySet()) {
+                final String ckey = "ab" + key;
+                if ( ! als.contains(ckey) )
+                    als.add(ckey);
+            }
+
+            // Modify the usage string.
+            if ( commands.size() > 0 )
+                cmd.setUsage(cmd.getUsage().replace("[subcommand]", "[" + Joiner.on('|').join(commands.keySet()) + "]"));
+
+            // Re-register the command.
+            cmd.setAliases(als);
+            map.register("abyss", cmd);
+        }
+
 
         // Create the PortalManager.
         WorldGuardPlugin worldGuard = useWorldGuard ? getWorldGuard() : null;
@@ -130,7 +187,6 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // Load Portals
         loadPortals();
-        fixItemFrames();
 
 
         // Create all the necessary listeners.
@@ -138,7 +194,7 @@ public final class AbyssPlugin extends JavaPlugin {
         new ItemListener(this);
         new PlayerListener(this);
         new VehicleListener(this);
-        new WorldListener(this);
+        //new WorldListener(this);
 
 
         // Start the Task
@@ -158,11 +214,18 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // Destroy the manager before we leave.
         manager = null;
+
+        // Destroy the local storage arrays.
+        entityLastPortal = null;
+        entityLastTime = null;
+        lastId = null;
+        portalDestroyTime = null;
+
     }
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // Configuration Loader
+    // Configuration Storage
     ///////////////////////////////////////////////////////////////////////////
 
     public void writeConfig() {
@@ -329,29 +392,8 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
 
-    public void fixItemFrames() {
-        // Iterate through the whole universe to fix ItemFrames.
-        for(World world: getServer().getWorlds()) {
-            for(Chunk chunk: world.getLoadedChunks()) {
-                for(Entity entity: chunk.getEntities()) {
-                    if (!(entity instanceof ItemFrame))
-                        continue;
-
-                    // See if this is part of a portal.
-                    final ABPortal portal = manager.getAt(entity.getLocation());
-                    if (portal == null || !portal.frameIDs.containsKey(entity.getUniqueId()))
-                        continue;
-
-                    // Set metadata.
-                    portal.applyMetadata((ItemFrame) entity);
-                }
-            }
-        }
-    }
-
-
     ///////////////////////////////////////////////////////////////////////////
-    // WorldGuard Detection
+    // Strange Getters
     ///////////////////////////////////////////////////////////////////////////
 
     private WorldGuardPlugin getWorldGuard() {
@@ -360,6 +402,25 @@ public final class AbyssPlugin extends JavaPlugin {
             return null;
 
         return (WorldGuardPlugin) plugin;
+    }
+
+
+    private CommandMap getCommandMap() {
+        final PluginManager m = getServer().getPluginManager();
+        if (! (m instanceof SimplePluginManager) )
+            return null;
+
+        try {
+            final Field f = SimplePluginManager.class.getDeclaredField("commandMap");
+            f.setAccessible(true);
+
+            Object map = f.get(m);
+            if ( map instanceof CommandMap )
+                return (CommandMap) map;
+
+        } catch(final Exception e) { }
+
+        return null;
     }
 
 
@@ -398,6 +459,175 @@ public final class AbyssPlugin extends JavaPlugin {
             return null;
 
         return key.substring(index + 1, ind2);
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Commands
+    ///////////////////////////////////////////////////////////////////////////
+
+    public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] arguments) {
+        // We only support our command.
+        if ( ! command.getName().equals("abyss") )
+            return false;
+
+        // Convert the arguments to a list.
+        final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
+
+        // Remove empty strings.
+        for(Iterator<String> it = args.iterator(); it.hasNext(); )
+            if ( it.next().trim().length() == 0 )
+                it.remove();
+
+        // See if this is a help command.
+        boolean help = false;
+        if ( args.size() > 0 && args.get(0).equalsIgnoreCase("help") ) {
+            help = true;
+            args.remove(0);
+        }
+
+        // Determine the sub-command.
+        String cmdkey = null;
+        if ( ! label.equals("abyss") ) {
+            cmdkey = label.substring(2);
+        } else if ( args.size() > 0 ) {
+            // Take the first argument.
+            cmdkey = args.remove(0).toLowerCase();
+        }
+
+        // If we don't have a command key, fail.
+        if ( cmdkey == null )
+            return false;
+
+        // Handle aliases first.
+        if ( aliases.containsKey(cmdkey) )
+            cmdkey = aliases.get(cmdkey);
+
+        // Try getting a command from that key.
+        ABCommand cmd = commands.get(cmdkey);
+        if ( cmd == null ) {
+            final ArrayList<String> possible = new ArrayList<String>();
+            for(final String key: commands.keySet())
+                if ( key.startsWith(cmdkey) )
+                    possible.add(key);
+
+            if ( possible.size() > 0 ) {
+                // We've got a command, so use it.
+                Collections.sort(possible);
+                cmdkey = possible.get(0);
+                cmd = commands.get(cmdkey);
+            }
+        }
+
+        // If we still don't have one, return.
+        if ( cmd == null )
+            return false;
+
+        // Make sure we've got permission to do this.
+        final PluginManager pm = getServer().getPluginManager();
+        final Permission perm = pm.getPermission("abyss.command." + cmdkey);
+        if ( perm != null && !sender.hasPermission(perm) ) {
+            t().red("Permission Denied").send(sender);
+            return true;
+        }
+
+
+        // Check for a block.
+        Block block = null;
+        if ( args.size() > 0 ) {
+            final String key = args.get(0);
+            if ( key.length() > 0 && key.charAt(0) == '@' ) {
+                args.remove(0);
+                Location loc = null;
+
+                // First, try getting a player with that name.
+                Player player = getServer().getPlayer(key.substring(1));
+                if ( player != null )
+                    loc = player.getLocation();
+
+                if ( loc == null && key.contains(",") ) {
+                    final World world = (sender instanceof Player) ? ((Player) sender).getWorld() : null;
+                    loc = ParseUtils.matchLocation(key.substring(1), world);
+                }
+
+                if ( loc == null ) {
+                    t().red("Invalid player name or block location: ").reset(key).send(sender);
+                    return true;
+                }
+
+                block = loc.getBlock();
+            }
+        }
+
+
+        // If we have arguments, and the command needs a portal, parse the next argument as that.
+        ABPortal portal = (block != null) ? manager.getAt(block) : null;
+        if ( cmd.require_portal && portal == null ) {
+            if ( block != null ) {
+                t().red("No portal at: ").darkgray(ChatColor.WHITE, "%d, %d, %d [%s]", block.getX(), block.getY(), block.getZ(), block.getWorld().getName()).send(sender);
+                return true;
+            }
+
+            if ( args.size() > 0 ) {
+                final String key = args.remove(0);
+
+                // First, see if it's a UUID. If not, try using it as a name.
+                try {
+                    portal = manager.getById(UUID.fromString(key));
+                } catch(IllegalArgumentException ex) { }
+
+                if ( portal == null )
+                    portal = manager.getByName(key);
+
+                // If it's not a valid name, try treating it as a location.
+                if ( portal == null ) {
+                    final World world = (sender instanceof Player) ? ((Player) sender).getWorld() : null;
+                    final Location loc = ParseUtils.matchLocation(key, world);
+                    if ( loc != null )
+                        portal = manager.getAt(loc);
+                }
+
+                if ( portal == null) {
+                    t().red("Invalid portal: ").reset(key).send(sender);
+                    return true;
+                }
+            }
+        }
+
+
+        // If we're not getting help, run the command.
+        if ( cmd.require_portal && portal == null )
+            help = true;
+
+        String usage = null;
+
+        if ( ! help ) {
+            try {
+                cmd.run(sender, null, block, portal, args);
+            } catch(ABCommand.NeedsHelp ex) {
+                help = true;
+                final String msg = ex.getMessage();
+                if ( msg != null && msg.length() > 0 )
+                    usage = msg;
+            }
+        }
+
+        // If we need help, display it.
+        if ( help ) {
+            ColorBuilder out = t(sender instanceof Player ? "/" : "").append(label).append(" ");
+
+            if ( label.equals("abyss") )
+                out.append(cmdkey).append(" ");
+
+            if ( usage != null )
+                out.append(usage);
+            else
+                out.append(cmd.usage != null ? cmd.usage : (cmd.require_portal ? "[@block|@player|portal]" : "<@block|@player|portal>"));
+
+            out.send(sender);
+        }
+
+        return true;
     }
 
 
@@ -706,19 +936,33 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // If we have a source portal, do a bunch of stuff.
         if ( from != null ) {
-            final Location fc = from.getCenter();
+            Location fc = from.getCenter();
             final Vector offset = pos.clone().subtract(fc).toVector();
 
             // If either rangeMultiplier is infinite, don't deal with it.
             if ( limitDistance && !Double.isInfinite(from.rangeMultiplier) && !Double.isInfinite(to.rangeMultiplier) ) {
-                // TODO: Handle separate worlds.
 
-                // Get the distance squared so we don't have to muck about with square roots.
-                double distance = dest.distance(fc);
+                double distance;
+
+                // Handle different worlds.
+                if ( ! fc.getWorld().equals(dest.getWorld())) {
+                    fc.setWorld(dest.getWorld());
+
+                    double multiplier = 100;
+                    if ( from.eyeCount > 0 && to.eyeCount > 0 )
+                        multiplier = multiplier / Math.pow(4, from.eyeCount + to.eyeCount);
+
+                    distance = dest.distance(fc) * multiplier;
+
+                } else {
+                    distance = dest.distance(fc);
+                }
 
                 // Apply portal depth to the problem.
                 distance -= from.depth * from.rangeMultiplier;
                 distance -= to.depth * to.rangeMultiplier;
+
+                getLogger().info("Distance: " + distance);
 
                 // If distance is still greater than zero, quit right now.
                 if ( distance > 0 )

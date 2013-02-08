@@ -18,6 +18,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Dye;
 import org.bukkit.material.Wool;
+import org.bukkit.permissions.Permission;
+import org.bukkit.plugin.PluginManager;
 
 import java.util.*;
 
@@ -60,27 +62,6 @@ public class PlayerListener implements Listener {
                 return b;
         }
         return null;
-    }
-
-
-    private static BlockFace getFacing(Player player) {
-        double rot = (player.getLocation().getYaw() - 180) % 360;
-        if ( rot < 0 )
-            rot += 360;
-
-        if ( 0 <= rot && rot < 45 )
-            return BlockFace.NORTH;
-
-        else if ( 45 <= rot && rot < 135 )
-            return BlockFace.EAST;
-
-        else if ( 135 <= rot && rot < 225 )
-            return BlockFace.SOUTH;
-
-        else if ( 225 <= rot && rot < 315 )
-            return BlockFace.WEST;
-
-        return BlockFace.NORTH;
     }
 
 
@@ -180,7 +161,7 @@ public class PlayerListener implements Listener {
         final PortalManager manager = plugin.getManager();
 
         // Try getting the portal for the entity.
-        final ABPortal portal = manager.getByMetadata(frame);
+        final ABPortal portal = manager.getByFrame(frame);
         if (portal == null)
             return;
 
@@ -325,375 +306,163 @@ public class PlayerListener implements Listener {
         ItemStack item = event.getItem();
 
         // See if we've got a portal wand.
-        final String tool = plugin.validatePortalWand(item);
+        String tool = plugin.validatePortalWand(item);
         if (tool == null)
             return;
 
         // We handle all Portal Wand events.
         event.setCancelled(true);
 
-        // Now, fork based on the tool.
-        if ( tool.equals("info") )
-            onInfo(player, item, event);
+        // Try to find the command.
+        ABCommand cmd = plugin.commands.get(tool);
+        if ( cmd == null ) {
+            final ArrayList<String> possible = new ArrayList<String>();
+            for(final String key: plugin.commands.keySet())
+                if ( key.startsWith(tool) )
+                    possible.add(key);
 
-        else if ( tool.equals("delete") )
-            onDelete(player, item, event);
-
-        else if ( tool.equals("create") )
-            onCreate(player, item, event);
-
-        else if ( tool.equals("config") || tool.equals("configure") )
-            onConfigure(player, item, event);
-
-        else if ( tool.equals("mod") || tool.equals("modifier") )
-            t().red("You must click a modifier frame to use the modifier wand.").send(player);
-
-        else if ( tool.equals("transport") || tool.equals("goto") )
-            onTransport(player, item, event);
-
-        else
-            t().red("Unknown Tool: ").white(tool);
-    }
-
-
-    void onTransport(final Player player, final ItemStack item, final PlayerInteractEvent event) {
-        final ItemMeta im = item.getItemMeta();
-        final List<String> lore = im.hasLore() ? im.getLore() : null;
-        if ( lore == null || lore.size() == 0 )
-            return;
-
-        final ABPortal portal = plugin.getManager().getByName(lore.get(0).trim());
-        if ( portal == null ) {
-            t().red("Invalid Portal").send(player);
+            if ( possible.size() > 0 ) {
+                // We've got a command, so use it.
+                Collections.sort(possible);
+                tool = possible.get(0);
+                cmd = plugin.commands.get(tool);
+            }
         }
 
-        // Teleport to the portal.
-        plugin.doTeleport(player, null, portal, player.getLocation(), player.getVelocity());
-    }
+        if ( cmd == null ) {
+            t().red("Unknown Tool: ").reset(tool).send(player);
+            return;
+        }
 
+        // Make sure the player has permission to use this tool.
+        final PluginManager pm = plugin.getServer().getPluginManager();
+        final Permission perm = pm.getPermission("abyss.wand." + tool);
+        if ( perm != null && !player.hasPermission(perm) ) {
+            t().red("Permission Denied").send(player);
+            return;
+        }
 
-    void onInfo(Player player, ItemStack item, PlayerInteractEvent event) {
-        // Get the block the player is looking at.
-
+        // Get the block involved.
         Block block = event.getClickedBlock();
         if ( block == null )
             block = getLiquid(player);
         else
             block = block.getRelative(event.getBlockFace());
 
-        final ABPortal portal = plugin.getManager().getAt(block);
-        if (portal == null) {
-            t().red("No portal detected.").send(player);
-            return;
-        }
+        // Get the lore, and check for a usage count and arguments.
+        ArrayList<String> args = new ArrayList<String>();
+        List<String> lore = item.getItemMeta().getLore();
+        int uses = 0;
 
-        final Location center = portal.getCenter();
-
-        final ItemStack n = portal.network;
-        String network = n.getData().toString();
-
-        if ( n.getType() == Material.SKULL_ITEM && n.getDurability() == 3 )
-            network = t("Personal ").gray("(").white(portal.owner).gray(")").toString();
-        else if ( n.getItemMeta().hasDisplayName() )
-            network = t(n.getItemMeta().getDisplayName()).gray("(").white(network).gray(")").toString();
-
-        ColorBuilder out = t().gold().bold("Portal [").yellow(portal.getName()).gold().bold("]").lf().
-            gray("UUID: ").white(portal.uid).lf().
-            gray("Center: ").white(center.getBlockX()).darkgray(", ").white(center.getBlockY()).
-                darkgray(", ").white(center.getBlockZ()).gray(" [").white(center.getWorld().getName()).
-                gray("]").lf().
-
-            gray("Depth: ").white("%-4d", portal.depth).gray("   Size: ").white("%-4d", portal.getSize()).
-                gray("   Rotation: ").white(portal.getRotation().name()).lf().
-
-            gray("Network: ").white(network).gray(" [").white(portal.color.name()).gray("]").lf().
-
-            gray("ID: ").white((portal.id == 0) ? "None" : Short.toString(portal.id)).
-                gray("   Destination: ").
-                white((portal.destination == 0) ? "None" : Short.toString(portal.destination)).lf().
-
-            gray("Closed: ").white(!portal.valid).gray("   Velocity: ").
-                white(portal.velocityMultiplier).lf().lf().
-
-            gray().bold("Modifiers");
-
-        boolean had_mods = false;
-
-        if ( portal.mods != null && portal.mods.size() > 0 ) {
-            for(final ModInfo info: portal.mods) {
-                if ( info.item == null || info.item.getType() == Material.AIR )
-                    continue;
-
-                had_mods = true;
-                out.lf().white("  ").append(info.item.getType().name());
-                if ( !info.flags.isEmpty() ) {
-                    final ColorBuilder c = new ColorBuilder();
-                    boolean first = true;
-                    for(Map.Entry<String, String> entry: info.flags.entrySet()) {
-                        if ( entry.getKey().startsWith("*") )
-                            continue;
-
-                        if (!first)
-                            c.darkgray("; ");
-                        first = false;
-
-                        c.gray(entry.getKey());
-                        final String value = entry.getValue();
-                        if ( value.length() > 0 )
-                            c.darkgray(": ").darkpurple(value);
+        if ( lore != null )
+            for(final String l: lore) {
+                final String plain = ChatColor.stripColor(l).toLowerCase();
+                if ( plain.startsWith("remaining uses: ") ) {
+                    try {
+                        uses = Integer.parseInt(plain.substring(16));
+                    } catch(NumberFormatException ex) {
+                        t().red("Invalid Remaining Use Count: ").reset(plain).send(player);
+                        return;
                     }
-
-                    if ( !first )
-                        out.darkgray(" [").append(c.toString()).darkgray("]");
+                } else {
+                    // Do a stupid space split, since that's what Bukkit does.
+                    args.addAll(Arrays.asList(l.split("\\s")));
                 }
             }
-        }
 
-        if ( ! had_mods )
-            out.lf().darkgray("  None");
+        // Remove empty strings.
+        for(Iterator<String> it = args.iterator(); it.hasNext(); )
+            if ( it.next().trim().length() == 0 )
+                it.remove();
 
-        out.send(player);
-    }
+        // If the command needs a portal, try finding one.
+        ABPortal portal = plugin.getManager().getAt(block);
+        if ( cmd.require_portal && portal == null ) {
+            // Try getting a portal from the arguments.
+            if ( args.size() > 0 ) {
+                final String key = args.remove(0);
+                if ( key.length() > 0 && key.charAt(0) == '@' ) {
+                    Location loc = null;
 
-    void onCreate(Player player, ItemStack item, PlayerInteractEvent event) {
-        final Block block = getLiquid(player);
-        if (block == null) {
-            t().red("Invalid portal location.").send(player);
-            return;
-        }
+                    // First, try getting a player with that name.
+                    Player p = plugin.getServer().getPlayer(key.substring(1));
+                    if ( p != null )
+                        loc = player.getLocation();
 
-        // Tokenize the lore now, so that we can deal with early configuration. Namely, size.
-        final ItemMeta im = item.getItemMeta();
-        int size = -1;
+                    if ( loc == null && key.contains(",") )
+                        loc = ParseUtils.matchLocation(key.substring(1), player.getWorld());
 
-        Map<String, String> tokens = null;
-        if ( im.hasLore() ) {
-            tokens = ParseUtils.tokenizeLore(im.getLore());
-            if ( tokens.containsKey("size") ) {
-                try {
-                    size = Integer.parseInt(tokens.get("size"));
-                } catch(NumberFormatException ex) { }
-
-                if ( size < 2 ) {
-                    t().red("Configuration Error").lf().
-                        gray("    size must be at least 2").send(player);
-                    return;
+                    // Try using this location as a portal.
+                    portal = plugin.getManager().getAt(loc);
                 }
 
-                // Get rid of this before the configuration takes place.
-                tokens.remove("size");
+                if ( portal == null ) {
+                    try {
+                        portal = plugin.getManager().getById(UUID.fromString(key));
+                    } catch(IllegalArgumentException ex) { }
+                }
+
+                if ( portal == null )
+                    portal = plugin.getManager().getByName(key);
             }
-        }
 
-        // Get the root location. Iterate all possible sizes.
-        Location loc = null;
-
-        if (size != -1) {
-            loc = plugin.findRoot(block.getLocation(), size);
-            if (loc == null || !plugin.validLayer(loc, size))
-                loc = null;
-        } else {
-            for(size = plugin.minimumSize; size <= plugin.maximumSize; size++) {
-                loc = plugin.findRoot(block.getLocation(), size);
-                if (loc == null || !plugin.validLayer(loc, size))
-                    loc = null;
-                else
-                    break;
-            }
-        }
-
-        if (loc == null) {
-            t().red("Invalid portal location.").send(player);
-            return;
-        }
-
-        // Check for existing portals.
-        final PortalManager manager = plugin.getManager();
-
-        ABPortal portal = manager.getByRoot(loc);
-        if (portal != null) {
-            t().gold("Portal [").yellow(portal.getName()).gold("]").
-                    red(" already exists here.").send(player);
-            return;
-        }
-
-        // Check for depth.
-        int depth = plugin.getDepthAt(loc, size);
-        if (depth < plugin.minimumDepth) {
-            t().red("Portals must be at least ").darkred(plugin.minimumDepth).red(" blocks deep.").
-                append("This space is ").darkred(depth).red(" blocks deep.").send(player);
-            return;
-        }
-
-        // Run validation.
-        if (!plugin.validateLocation(loc, size) ) {
-            t().red("Invalid portal location.");
-            return;
-        }
-
-        // Determine the facing direction.
-        BlockFace facing = event.hasBlock() ? event.getBlockFace().getOppositeFace() : null;
-        if ( facing == null || facing == BlockFace.UP || facing == BlockFace.DOWN )
-            facing = getFacing(player);
-
-        // Create the portal.
-        portal = new ABPortal(plugin);
-
-        // Set some basic stuff.
-        portal.owner = player.getName();
-
-        // Set the portal rotation.
-        if ( facing == BlockFace.NORTH ) portal.setRotation(Rotation.NONE);
-        if ( facing == BlockFace.EAST) portal.setRotation(Rotation.CLOCKWISE);
-        if ( facing == BlockFace.SOUTH ) portal.setRotation(Rotation.FLIPPED);
-        if ( facing == BlockFace.WEST ) portal.setRotation(Rotation.COUNTER_CLOCKWISE);
-
-        // Use any configuration.
-        if ( tokens != null ) {
-            try {
-                configFromLore(portal, tokens);
-            } catch(IllegalArgumentException ex) {
-                t().red("Configuration Error").lf().
-                    gray("    ").append(ex.getMessage()).send(player);
+            if ( portal == null ) {
+                t().red("No portal detected.").send(player);
                 return;
             }
         }
 
-        // Set the location and add it to the system.
-        portal.setLocation(loc, size);
-        manager.add(portal);
-
-        t().gold("Portal [").yellow(portal.getName()).gold("]").darkgreen(" was created successfully.").send(player);
-    }
-
-
-    private void onConfigure(final Player player, final ItemStack item, final PlayerInteractEvent event) {
-        // Get the block the player is looking at.
-        final PortalManager manager = plugin.getManager();
-        final ABPortal portal = manager.getAt(getLiquid(player));
-        if (portal == null) {
-            t().red("No portal detected.").send(player);
-            return;
-        }
-
-        // Let's remove the portal from networks temporarily.
-        final ItemStack network = portal.network;
-        final String owner = portal.owner;
-        final DyeColor color = portal.color;
-
-        final int index = manager.removeFromNetwork(portal);
-        manager.removeFromNetworkIds(portal);
-
-        // Also, destroy the item frames.
-        portal.destroyEntities(true);
-
-        // Now, update it.
+        // Now, run the command. If not successful, stop now.
+        boolean passed = false;
         try {
-            configFromLore(portal, item.getItemMeta());
-
-        } catch(IllegalArgumentException ex) {
-            t().red("Configuration Error").lf().
-                gray("    ").append(ex.getMessage()).send(player);
-            return;
-
-        } finally {
-            // Make sure it gets added again.
-            if ( portal.network.equals(network) && portal.owner.equals(owner) && portal.color == color)
-                manager.addToNetwork(portal, index);
-            else
-                manager.addToNetwork(portal);
-
-            portal.createEntities();
-        }
-
-        t().gold("Portal [").yellow(portal.getName()).gold("]").darkgreen(" was updated successfully.").send(player);
-    }
-
-    private void configFromLore(final ABPortal portal, final Map<String, String> config) {
-        if (config == null || portal == null || config.size() == 0)
-            return;
-
-        for(Map.Entry<String,String> entry: config.entrySet())
-            loreConfig(portal, entry.getKey(), entry.getValue());
-    }
-
-    private void configFromLore(final ABPortal portal, final ItemMeta meta) {
-        // If there's no lore, obviously this does nothing.
-        if (!meta.hasLore())
-            return;
-
-        configFromLore(portal, ParseUtils.tokenizeLore(meta.getLore()));
-    }
-
-    private static void requireValue(final String key, final String value) {
-        if (value == null || value.length() == 0)
-            throw new IllegalArgumentException(key + " must have a value.");
-    }
-
-    private static void loreConfig(final ABPortal portal, final String key, final String value) {
-        if (key.equals("owner")) {
-            requireValue(key, value);
-            portal.owner = value;
-
-        } else if (key.equals("color")) {
-            requireValue(key, value);
-            DyeColor color = ParseUtils.matchColor(value);
-            if ( color == null )
-                throw new IllegalArgumentException("Invalid color: " + value);
-
-            portal.color = color;
-
-        } else if (key.equals("id")) {
-            requireValue(key, value);
-            try {
-                portal.id = Short.parseShort(value);
-            } catch(NumberFormatException ex) {
-                throw new IllegalArgumentException("id must be a number between " + Short.MIN_VALUE + " and " + Short.MAX_VALUE);
-            }
-
-        } else if (key.equals("dest") || key.equals("destination")) {
-            requireValue(key, value);
-            try {
-                portal.destination = Short.parseShort(value);
-            } catch(NumberFormatException ex) {
-                throw new IllegalArgumentException("destination must be a number between " + Short.MIN_VALUE + " and " + Short.MAX_VALUE);
-            }
-
-        } else if (key.equals("velocity") || key.equals("speed")) {
-            requireValue(key, value);
-            try {
-                portal.velocityMultiplier = Integer.parseInt(value);
-            } catch(NumberFormatException ex) {
-                throw new IllegalArgumentException("velocity must be a number.");
-            }
-
-        } else if (key.equals("rot") || key.equals("rotation")) {
-            requireValue(key, value);
-            portal.setRotation(ParseUtils.matchRotation(value));
-
-        } else if (key.equals("size")) {
-            throw new IllegalArgumentException("size cannot be applied to existing portals.");
-
-        } else {
-            throw new IllegalArgumentException("Invalid option: " + key);
-        }
-    }
-
-    private void onDelete(final Player player, final ItemStack item, final PlayerInteractEvent event) {
-        // Get the portal.
-        final ABPortal portal = plugin.getManager().getAt(getLiquid(player));
-        if (portal == null) {
-            t().red("No portal detected.").send(player);
+            passed = cmd.run(player, event, block, portal, args);
+        } catch(ABCommand.NeedsHelp ex) {
             return;
         }
 
-        // Destroy the portal.
-        ColorBuilder p = t().gold("Portal [").yellow(portal.getName()).gold("]");
+        if ( ! passed )
+            return;
 
-        if (!plugin.getManager().destroy(portal))
-            p.red(" could not be deleted.").send(player);
-        else
-            p.darkgreen(" was deleted successfully.").send(player);
+        // Since it was a success, decrement the uses for our wand.
+        if ( uses > 0 && player.getGameMode() != GameMode.CREATIVE ) {
+            ItemStack rest = null;
+
+            if ( uses > 1 ) {
+                // If it's part of a stack, we'll want to split it up here.
+                if ( item.getAmount() > 1 ) {
+                    rest = item.clone();
+                    rest.setAmount(item.getAmount() - 1);
+
+                    item.setAmount(1);
+                }
+
+                for(int i=0; i < lore.size(); i++) {
+                    String l = lore.get(i);
+                    final String plain = ChatColor.stripColor(l).toLowerCase();
+                    if ( ! plain.startsWith("remaining uses: ") )
+                        continue;
+
+                    // Replace the uses remaining. Try to preserve color codes.
+                    lore.set(i, l.replace(plain.substring(16), Integer.toString(uses - 1)));
+                }
+
+                // Apply the new lore.
+                final ItemMeta im = item.getItemMeta();
+                im.setLore(lore);
+                item.setItemMeta(im);
+
+            } else if ( uses == 1 ) {
+                // Destroy the wand.
+                player.setItemInHand(null);
+            }
+
+            // If we've got extra items, add them.
+            if ( rest != null ) {
+                for(final ItemStack dnf: player.getInventory().addItem(rest).values())
+                    player.getWorld().dropItemNaturally(player.getLocation(), dnf);
+                player.updateInventory();
+            }
+        }
     }
 
 }

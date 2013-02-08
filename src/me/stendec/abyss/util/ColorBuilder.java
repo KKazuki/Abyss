@@ -1,13 +1,19 @@
 package me.stendec.abyss.util;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 public final class ColorBuilder implements Appendable, CharSequence, Serializable {
 
     private final StringBuilder sb;
+
+    private static final Pattern fpattern = Pattern.compile("%(?:\\d+\\$)?[-#+ 0,(]*\\d*(?:\\.\\d+)?(?:[bBhHsScCdoxXeEfgGaA%n]|[tT][ABCDFHILMNQRSTYZabcdehjklmprsyz])");
 
     public ColorBuilder() {
         sb = new StringBuilder();
@@ -45,15 +51,15 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
         return this;
     }
 
-    public final ColorBuilder send(final Player player) {
-        player.sendMessage(toString());
+    public final ColorBuilder send(final CommandSender sender) {
+        sender.sendMessage(sb.toString());
         return this;
     }
 
-    public final ColorBuilder send(final Player... players) {
-        final String out = toString();
-        for(final Player player: players)
-            player.sendMessage(out);
+    public final ColorBuilder send(final CommandSender... senders) {
+        final String out = sb.toString();
+        for(final CommandSender sender: senders)
+            sender.sendMessage(out);
 
         return this;
     }
@@ -85,7 +91,6 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
     public final ColorBuilder under() { sb.append(ChatColor.UNDERLINE); return this; }
     public final ColorBuilder reset() { sb.append(ChatColor.RESET); return this; }
     public final ColorBuilder magic() { sb.append(ChatColor.MAGIC); return this; }
-
 
     public final ColorBuilder aqua(final String format, final Object... args) {
         sb.append(ChatColor.AQUA).append(String.format(format, args)); return this; }
@@ -152,6 +157,72 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
 
     public final ColorBuilder magic(final String format, final Object... args) {
         sb.append(ChatColor.MAGIC).append(String.format(format, args)); return this; }
+
+    public final ColorBuilder aqua(final ChatColor color, final String format, final Object... args) {
+        return aqua(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.AQUA), args); }
+
+    public final ColorBuilder black(final ChatColor color, final String format, final Object... args) {
+        return black(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.BLACK), args); }
+
+    public final ColorBuilder blue(final ChatColor color, final String format, final Object... args) {
+        return blue(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.BLUE), args); }
+
+    public final ColorBuilder darkaqua(final ChatColor color, final String format, final Object... args) {
+        return darkaqua(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.DARK_AQUA), args); }
+
+    public final ColorBuilder darkblue(final ChatColor color, final String format, final Object... args) {
+        return darkblue(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.DARK_BLUE), args); }
+
+    public final ColorBuilder darkgray(final ChatColor color, final String format, final Object... args) {
+        return darkgray(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.DARK_GRAY), args); }
+
+    public final ColorBuilder darkgreen(final ChatColor color, final String format, final Object... args) {
+        return darkgreen(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.DARK_GREEN), args); }
+
+    public final ColorBuilder darkpurple(final ChatColor color, final String format, final Object... args) {
+        return darkpurple(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.DARK_PURPLE), args); }
+
+    public final ColorBuilder darkred(final ChatColor color, final String format, final Object... args) {
+        return darkred(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.DARK_RED), args); }
+
+    public final ColorBuilder gold(final ChatColor color, final String format, final Object... args) {
+        return gold(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.GOLD), args); }
+
+    public final ColorBuilder gray(final ChatColor color, final String format, final Object... args) {
+        return gray(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.GRAY), args); }
+
+    public final ColorBuilder green(final ChatColor color, final String format, final Object... args) {
+        return green(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.GREEN), args); }
+
+    public final ColorBuilder lightpurple(final ChatColor color, final String format, final Object... args) {
+        return lightpurple(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.LIGHT_PURPLE), args); }
+
+    public final ColorBuilder red(final ChatColor color, final String format, final Object... args) {
+        return red(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.RED), args); }
+
+    public final ColorBuilder white(final ChatColor color, final String format, final Object... args) {
+        return white(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.WHITE), args); }
+
+    public final ColorBuilder yellow(final ChatColor color, final String format, final Object... args) {
+        return yellow(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.YELLOW), args); }
+
+    public final ColorBuilder bold(final ChatColor color, final String format, final Object... args) {
+        return bold(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.BOLD), args); }
+
+    public final ColorBuilder italic(final ChatColor color, final String format, final Object... args) {
+        return italic(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.ITALIC), args); }
+
+    public final ColorBuilder strike(final ChatColor color, final String format, final Object... args) {
+        return strike(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.STRIKETHROUGH), args); }
+
+    public final ColorBuilder under(final ChatColor color, final String format, final Object... args) {
+        return under(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.UNDERLINE), args); }
+
+    public final ColorBuilder reset(final ChatColor color, final String format, final Object... args) {
+        return reset(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.RESET), args); }
+
+    public final ColorBuilder magic(final ChatColor color, final String format, final Object... args) {
+        return magic(fpattern.matcher(format).replaceAll(color + "$0" + ChatColor.MAGIC), args); }
 
     public final ColorBuilder aqua(final boolean b) {
         sb.append(ChatColor.AQUA).append(b); return this; }

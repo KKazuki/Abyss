@@ -36,7 +36,6 @@ public class WorldListener implements Listener {
                 continue;
 
             // Set metadata for fast lookup.
-            portal.applyMetadata((ItemFrame) entity);
         }
     }
 

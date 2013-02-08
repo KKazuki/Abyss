@@ -4,9 +4,9 @@ import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.metadata.MetadataValue;
-import org.bukkit.metadata.Metadatable;
 
 import java.util.*;
 
@@ -24,6 +24,7 @@ public abstract class PortalManager {
     protected HashMap<ItemStack, HashMap<DyeColor, HashMap<Short, UUID>>> networkPortalIds;
     protected HashMap<String, HashMap<DyeColor, HashMap<Short, UUID>>> playerPortalIds;
 
+    protected HashMap<UUID, UUID> portalFrames;
 
     ///////////////////////////////////////////////////////////////////////////
     // Basic Initialization and Logic
@@ -35,6 +36,7 @@ public abstract class PortalManager {
         // Initialize Generic Storage Structures
         allPortals = new HashMap<UUID, ABPortal>();
         portalNames = new HashMap<String, UUID>();
+        portalFrames = new HashMap<UUID, UUID>();
 
         networkPortals = new HashMap<ItemStack, HashMap<DyeColor, ArrayList<UUID>>>();
         playerPortals = new HashMap<String, HashMap<DyeColor, ArrayList<UUID>>>();
@@ -54,20 +56,19 @@ public abstract class PortalManager {
     }
 
     public final ABPortal getByName(final String name) {
-        final UUID uid = portalNames.get(name);
+        final UUID uid = portalNames.get(name.toLowerCase());
         if ( uid == null )
             return null;
 
         return allPortals.get(uid);
     }
 
+    public final ABPortal getByFrame(final Entity frame) {
+        final UUID uid = portalFrames.get(frame.getUniqueId());
+        if ( uid == null )
+            return null;
 
-    public final ABPortal getByMetadata(final Metadatable md) {
-        for(MetadataValue value: md.getMetadata("abyss_portal"))
-            if ( value.getOwningPlugin().equals(plugin) )
-                return allPortals.get(value.value());
-
-        return null;
+        return allPortals.get(uid);
     }
 
 
@@ -225,6 +226,36 @@ public abstract class PortalManager {
     }
 
 
+    public final void addFrames(final ABPortal portal) {
+        if ( ! allPortals.containsKey(portal.uid) )
+            return;
+
+        for(final UUID frame: portal.frameIDs.keySet())
+            if ( ! portalFrames.containsKey(frame) )
+                portalFrames.put(frame, portal.uid);
+    }
+
+    public final void addFrame(final ABPortal portal, final ItemFrame frame) {
+        if ( ! allPortals.containsKey(portal.uid) )
+            return;
+
+        final UUID uid = frame.getUniqueId();
+        if ( ! portalFrames.containsKey(uid) )
+            portalFrames.put(uid, portal.uid);
+    }
+
+    public final void removeFrames(final ABPortal portal) {
+        for(final UUID frame: portal.frameIDs.keySet())
+            if ( portalFrames.containsKey(frame) )
+                portalFrames.remove(frame);
+    }
+
+    public final void removeFrame(final ItemFrame frame) {
+        final UUID uid = frame.getUniqueId();
+        if ( portalFrames.containsKey(uid) )
+            portalFrames.remove(uid);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Macro Portal Management
     ///////////////////////////////////////////////////////////////////////////
@@ -245,9 +276,10 @@ public abstract class PortalManager {
 
         // Since that succeeded, add it to allPortals and the networks.
         allPortals.put(uid, portal);
-        portalNames.put(portal.getName(), uid);
+        portalNames.put(portal.getName().toLowerCase(), uid);
         addToNetwork(portal);
         addToNetworkIds(portal);
+        addFrames(portal);
 
         return true;
     }
@@ -261,11 +293,12 @@ public abstract class PortalManager {
     }
 
 
-    public void updateName(final ABPortal portal, final String oldName) {
+    public void updateName(final ABPortal portal, String oldName) {
+        oldName = oldName.toLowerCase();
         if ( portalNames.containsKey(oldName) )
             portalNames.remove(oldName);
 
-        portalNames.put(portal.getName(), portal.uid);
+        portalNames.put(portal.getName().toLowerCase(), portal.uid);
     }
 
 
@@ -280,7 +313,7 @@ public abstract class PortalManager {
 
         // Remove it from allPortals and the networks.
         allPortals.remove(portal.uid);
-        portalNames.remove(portal.getName());
+        portalNames.remove(portal.getName().toLowerCase());
         removeFromNetwork(portal);
         removeFromNetworkIds(portal);
 

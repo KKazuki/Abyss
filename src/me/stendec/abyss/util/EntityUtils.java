@@ -17,6 +17,26 @@ import java.util.List;
 
 public class EntityUtils {
 
+    public static BlockFace getFacing(Entity entity) {
+        double rot = (entity.getLocation().getYaw() - 180) % 360;
+        if ( rot < 0 )
+            rot += 360;
+
+        if ( 0 <= rot && rot < 45 )
+            return BlockFace.NORTH;
+
+        else if ( 45 <= rot && rot < 135 )
+            return BlockFace.EAST;
+
+        else if ( 135 <= rot && rot < 225 )
+            return BlockFace.SOUTH;
+
+        else if ( 225 <= rot && rot < 315 )
+            return BlockFace.WEST;
+
+        return BlockFace.NORTH;
+    }
+
     public static List<Entity> getNearbyEntities(final Location loc, final double distance) {
         return getNearbyEntities(loc, distance, distance, distance);
     }
