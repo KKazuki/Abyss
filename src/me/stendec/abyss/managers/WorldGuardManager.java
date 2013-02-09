@@ -50,8 +50,6 @@ public class WorldGuardManager extends PortalManager {
             if ( ! (r instanceof ProtectedCuboidRegion) )
                 return false;
 
-            plugin.getLogger().finer("Updating region: " + key);
-
             region = (ProtectedCuboidRegion) r;
             region.setMinimumPoint(min);
             region.setMaximumPoint(max);

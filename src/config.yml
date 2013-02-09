@@ -20,12 +20,31 @@ minimum-velocity: 0.15
 maximum-velocity: 10     # We set this to avoid hitting moved-too-quickly.
 cooldown-ticks: 40
 
+
 # Distance Calculations
 limit-distance: true
 base-range: 50
 depth-multiplier: 25
 
+
 # Whether or not to use WorldGuard for region storage.
 # This is generally good since WorldGuard uses a proper tree for regions, which
 # is much nicer than our silly little per-world lists.
 use-worldguard: true
+
+
+# Portal Effects
+# Sounds can be given as just their name, or a name, volume, and pitch.
+# Effects can be given as just their name, or a name and data bit.
+use-portal-effect: true
+portal-effect: mobspawner flames
+portal-sound: enderman teleport
+
+use-static-effect: true
+# static-effect: smoke  # defaults to portal-effect
+static-effect-centered: false
+static-effect-full-height: true
+static-sound:
+    name: portal
+    volume: 0.2
+    pitch: 1

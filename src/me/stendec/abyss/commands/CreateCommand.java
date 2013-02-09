@@ -155,12 +155,18 @@ public class CreateCommand extends ABCommand {
         // Create the new portal.
         portal = new ABPortal(plugin);
         portal.owner = owner;
+        portal.setRotation(rot);
 
         // Use any remaining configuration.
-        // TODO: Apply remaining configuration.
+        try {
+            ParseUtils.configFromLore(portal, config);
+        } catch(IllegalArgumentException ex) {
+            t().red("Configuration Error").send(sender);
+            t("    ").gray(ex.getMessage()).send(sender);
+            return false;
+        }
 
-        // Set the portal location and rotation, and add it to the system.
-        portal.setRotation(rot);
+        // Set the portal location and add it to the system.
         portal.setLocation(loc, size);
         manager.add(portal);
 

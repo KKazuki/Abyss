@@ -38,24 +38,28 @@ public class DestinationsCommand extends ABCommand {
 
         // Get the destination portals.
         ArrayList<ABPortal> portals = plugin.getManager().getNetworkForDestination(portal, false);
-        for(final ABPortal p: portals) {
-            final String n = p.getName();
-            out.lf();
+        if ( portals.size() > 0 ) {
+            for(final ABPortal p: portals) {
+                final String n = p.getName();
+                out.lf();
 
-            final double distance = portal.getDistance(p);
-            final double range = portal.checkRange(p, distance);
+                final double distance = portal.getDistance(p);
+                final double range = portal.checkRange(p, distance);
 
-            if ( range > 0 )
-                out.darkgray("%s is %d blocks out of range.", n, Math.round(range));
+                if ( range > 0 )
+                    out.darkgray("%s is %d blocks out of range.", n, Math.round(range));
 
-            else if ( ! p.valid )
-                out.darkgray("%s is obstructed.", n);
+                else if ( ! p.valid )
+                    out.darkgray("%s is obstructed.", n);
 
-            else
-                out.reset("%s is %d blocks within range.", n, Math.round(-range));
+                else
+                    out.reset("%s is %d blocks within range.", n, Math.round(-range));
 
-            if ( dist )
-                out.darkgray(" [Dist: %d]", Math.round(distance));
+                if ( dist )
+                    out.darkgray(" [Dist: %d]", Math.round(distance));
+            }
+        } else {
+            out.lf().darkgray("There are no destinations.");
         }
 
         String[] output = out.toString().split("\n");

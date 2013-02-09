@@ -316,11 +316,14 @@ public abstract class PortalManager {
 
 
     public void updateName(final ABPortal portal, String oldName) {
-        oldName = oldName.toLowerCase();
-        if ( portalNames.containsKey(oldName) )
-            portalNames.remove(oldName);
+        if ( oldName != null ) {
+            oldName = oldName.toLowerCase();
+            if ( portalNames.containsKey(oldName) )
+                portalNames.remove(oldName);
+        }
 
-        portalNames.put(portal.getName().toLowerCase(), portal.uid);
+        if ( allPortals.containsKey(portal.uid) )
+            portalNames.put(portal.getName().toLowerCase(), portal.uid);
     }
 
 

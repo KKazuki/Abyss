@@ -74,6 +74,26 @@ public final class AbyssPlugin extends JavaPlugin {
     public double baseRange;
 
 
+    // Effect Configuration
+    public boolean usePortalEffect;
+
+    public Effect portalEffect;
+    public int portalEffectData;
+    public Sound portalSound;
+    public float portalSoundVolume;
+    public float portalSoundPitch;
+
+    public boolean useStaticEffect;
+    public boolean staticEffectCentered;
+    public boolean staticEffectFullHeight;
+
+    public Effect staticEffect;
+    public int staticEffectData;
+    public Sound staticSound;
+    public float staticSoundVolume;
+    public float staticSoundPitch;
+
+
     // Portal Storage
     private PortalManager manager;
     public HashMap<UUID, UUID> entityLastPortal;
@@ -259,6 +279,51 @@ public final class AbyssPlugin extends JavaPlugin {
         config.set("cooldown-ticks", cooldownTicks);
         config.set("use-worldguard", useWorldGuard);
 
+        // Effect Configuration
+        config.set("use-portal-effect", usePortalEffect);
+
+        if ( portalEffectData != 0 ) {
+            ConfigurationSection c = config.createSection("portal-effect");
+            c.set("name", portalEffect.name());
+            c.set("data", portalEffectData);
+        } else {
+            config.set("portal-effect", portalEffect.name());
+        }
+
+        if ( portalSoundPitch != 1 || portalSoundVolume != 1 ) {
+            ConfigurationSection c = config.createSection("portal-sound");
+            c.set("name", portalSound.name());
+            c.set("volume", portalSoundVolume);
+            c.set("pitch", portalSoundPitch);
+        } else {
+            config.set("portal-sound", portalSound.name());
+        }
+
+        config.set("use-static-effect", useStaticEffect);
+        config.set("static-effect-centered", staticEffectCentered);
+        config.set("static-effect-full-height", staticEffectFullHeight);
+
+        if ( staticEffect != portalEffect || staticEffectData != portalEffectData ) {
+            if ( staticEffectData != 0 ) {
+                ConfigurationSection c = config.createSection("static-effect");
+                c.set("name", staticEffect.name());
+                c.set("data", staticEffectData);
+            } else {
+                config.set("static-effect", staticEffect.name());
+            }
+        }
+
+        if ( staticSound != portalSound || staticSoundPitch != portalSoundPitch || staticSoundVolume != portalSoundVolume ) {
+            if ( staticSoundVolume != 1 || staticSoundPitch != 1 ) {
+                ConfigurationSection c = config.createSection("static-sound");
+                c.set("name", staticSound.name());
+                c.set("pitch", staticSoundPitch);
+                c.set("volume", staticSoundVolume);
+            } else {
+                config.set("static-sound", staticSound.name());
+            }
+        }
+
         // Now, save the configuration to disk.
         saveConfig();
     }
@@ -269,7 +334,6 @@ public final class AbyssPlugin extends JavaPlugin {
         reloadConfig();
 
         final FileConfiguration config = getConfig();
-        final Configuration defaults = config.getDefaults();
         final Logger log = getLogger();
 
         // Portal Wand
@@ -278,9 +342,8 @@ public final class AbyssPlugin extends JavaPlugin {
         String string = config.getString("wand-material");
         wandMaterial = Material.matchMaterial(string);
         if ( wandMaterial == null ) {
-            string = defaults.getString("wand-material");
-            log.warning("Invalid wand-material. Using: " + string);
-            wandMaterial = Material.matchMaterial(string);
+            wandMaterial = Material.STICK;
+            log.warning("Invalid wand-material. Using: STICK");
         }
 
 
@@ -293,24 +356,22 @@ public final class AbyssPlugin extends JavaPlugin {
             defaultNetwork = ParseUtils.matchItem((String) network);
 
         if ( defaultNetwork == null ) {
-            string = defaults.getString("network-key");
-            log.warning("Invalid network-key. Using: " + string);
-            defaultNetwork = ParseUtils.matchItem(string);
+            defaultNetwork = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+            log.warning("Invalid network-key. Using: SKULL ITEM:3");
         }
 
         defaultColor = ParseUtils.matchColor(config.getString("network-color"));
         if ( defaultColor == null ) {
-            string = defaults.getString("network-color");
-            log.warning("Invalid network-color. Using: " + string);
-            defaultColor = ParseUtils.matchColor(string);
+            defaultColor = DyeColor.WHITE;
+            log.warning("Invalid network-color. Using: WHITE");
         }
 
 
         // Portal Dimensions
-        minimumDepth = (short) config.getInt("minimum-depth", defaults.getInt("minimum-depth"));
-        minimumSize = (short) config.getInt("minimum-size", defaults.getInt("minimum-size"));
-        maximumSize = (short) config.getInt("maximum-size", defaults.getInt("maximum-size"));
-        maximumMods = (short) config.getInt("maximum-modifiers", defaults.getInt("maximum-modifiers", maximumSize));
+        minimumDepth = (short) config.getInt("minimum-depth", 2);
+        minimumSize = (short) config.getInt("minimum-size", 2);
+        maximumSize = (short) config.getInt("maximum-size", 4);
+        maximumMods = (short) config.getInt("maximum-modifiers", maximumSize);
 
         if ( minimumSize < 2 ) {
             log.warning("Invalid minimum-size. Must be at least 2.");
@@ -327,15 +388,112 @@ public final class AbyssPlugin extends JavaPlugin {
 
 
         // Portal Configuration
-        minimumVelocity = config.getDouble("minimum-velocity", defaults.getDouble("minimum-velocity"));
-        maximumVelocity = config.getDouble("maximum-velocity", defaults.getDouble("maximum-velocity"));
-        cooldownTicks = config.getLong("cooldown-ticks", defaults.getLong("cooldown-ticks"));
-        useWorldGuard = config.getBoolean("use-worldguard", defaults.getBoolean("use-worldguard"));
+        minimumVelocity = config.getDouble("minimum-velocity", 0.15);
+        maximumVelocity = config.getDouble("maximum-velocity", 10);
+        cooldownTicks = config.getLong("cooldown-ticks", 40);
+        useWorldGuard = config.getBoolean("use-worldguard", true);
+
 
         // Range Configuration
-        limitDistance = config.getBoolean("limit-distance", defaults.getBoolean("limit-distance"));
-        rangeMultiplier = config.getDouble("depth-multiplier", defaults.getDouble("depth-multiplier"));
-        baseRange = config.getDouble("base-range", defaults.getDouble("base-range"));
+        limitDistance = config.getBoolean("limit-distance", true);
+        rangeMultiplier = config.getDouble("depth-multiplier", 25);
+        baseRange = config.getDouble("base-range", 50);
+
+
+        // Effect Configuration
+        usePortalEffect = config.getBoolean("use-portal-effect", true);
+        useStaticEffect = config.getBoolean("use-static-effect", true);
+        staticEffectCentered = config.getBoolean("static-effect-centered", false);
+        staticEffectFullHeight = config.getBoolean("static-effect-full-height", true);
+
+        if ( config.isConfigurationSection("portal-effect") ) {
+            ConfigurationSection c = config.getConfigurationSection("portal-effect");
+            portalEffect = ParseUtils.matchEffect(c.getString("name"));
+            if ( portalEffect == null ) {
+                log.warning("Invalid portal-effect. Defaulting to: MOBSPAWNER_FLAMES");
+                portalEffect = Effect.MOBSPAWNER_FLAMES;
+                portalEffectData = 0;
+            } else {
+                portalEffectData = c.getInt("data", 0);
+            }
+        } else {
+            portalEffect = ParseUtils.matchEffect(config.getString("portal-effect"));
+            if ( portalEffect == null ) {
+                if ( config.contains("portal-effect") )
+                    log.warning("Invalid portal-effect. Defaulting to: MOBSPAWNER_FLAMES");
+                portalEffect = Effect.MOBSPAWNER_FLAMES;
+            }
+            portalEffectData = 0;
+        }
+
+        if ( config.isConfigurationSection("static-effect") ) {
+            ConfigurationSection c = config.getConfigurationSection("static-effect");
+            staticEffect = ParseUtils.matchEffect(c.getString("name"));
+            if ( staticEffect == null ) {
+                log.warning("Invalid static-effect. Defaulting to portal-effect.");
+                staticEffect = portalEffect;
+                staticEffectData = portalEffectData;
+            } else {
+                staticEffectData = c.getInt("data", 0);
+            }
+        } else {
+            staticEffect = ParseUtils.matchEffect(config.getString("static-effect"));
+            if ( staticEffect == null ) {
+                if ( config.contains("static-effect") )
+                    log.warning("Invalid static-effect. Defaulting to portal-effect.");
+                staticEffect = portalEffect;
+                staticEffectData = portalEffectData;
+            }
+        }
+
+        if ( config.isConfigurationSection("portal-sound") ) {
+            ConfigurationSection c = config.getConfigurationSection("portal-sound");
+            portalSound = ParseUtils.matchSound(c.getString("name"));
+            if ( portalSound == null ) {
+                log.warning("Invalid portal-sound. Defaulting to: ENDERMAN_TELEPORT");
+                portalSound = Sound.ENDERMAN_TELEPORT;
+                portalSoundPitch = 1;
+                portalSoundVolume = 1;
+            } else {
+                portalSoundPitch = c.getInt("pitch", 1);
+                portalSoundVolume = c.getInt("volume", 1);
+            }
+        } else {
+            portalSound = ParseUtils.matchSound(config.getString("portal-sound"));
+            if ( portalSound == null ) {
+                if ( config.contains("portal-sound") )
+                    log.warning("Invalid portal-sound. Defaulting to: ENDERMAN_TELEPORT");
+                portalSound = Sound.ENDERMAN_TELEPORT;
+            }
+            portalSoundPitch = 1;
+            portalSoundVolume = 1;
+        }
+
+        if ( config.isConfigurationSection("static-sound") ) {
+            ConfigurationSection c = config.getConfigurationSection("static-sound");
+            staticSound = ParseUtils.matchSound(c.getString("name"));
+            if ( staticSound == null ) {
+                log.warning("Invalid static-sound. Defaulting to portal-sound.");
+                staticSound = portalSound;
+                staticSoundPitch = portalSoundPitch;
+                staticSoundVolume = portalSoundVolume;
+            } else {
+                staticSoundPitch = c.getInt("pitch", 1);
+                staticSoundVolume = c.getInt("volume", 1);
+            }
+        } else {
+            staticSound = ParseUtils.matchSound(config.getString("static-sound"));
+            if ( staticSound == null ) {
+                if ( config.contains("static-sound") )
+                    log.warning("Invalid static-sound. Defaulting to portal-sound.");
+                staticSound = portalSound;
+                staticSoundPitch = portalSoundPitch;
+                staticSoundVolume = portalSoundVolume;
+            } else {
+                staticSoundVolume = 1;
+                staticSoundPitch = 1;
+            }
+        }
 
     }
 
@@ -881,7 +1039,7 @@ public final class AbyssPlugin extends JavaPlugin {
         final UUID eid = entity.getUniqueId();
         if ( portal.uid.equals(entityLastPortal.get(eid)) ) {
             final Long time = entityLastTime.get(eid);
-            if ( time != null && world.getFullTime() < time ) {
+            if ( time != null && entity.getWorld().getFullTime() < time ) {
                 // Make sure the cooldown period only works once.
                 entityLastPortal.remove(eid);
                 entityLastTime.remove(eid);
@@ -1164,16 +1322,13 @@ public final class AbyssPlugin extends JavaPlugin {
         }
 
         // Play an effect.
-        // TODO: Make this configurable.
-
         final World pw = pos.getWorld();
         final World dw = dest.getWorld();
 
-        pw.playEffect(pos, Effect.MOBSPAWNER_FLAMES, 0);
-        dw.playEffect(dest, Effect.MOBSPAWNER_FLAMES, 0);
-
-        pw.playSound(pos, Sound.ENDERMAN_TELEPORT, 1, 1);
-        dw.playSound(dest, Sound.ENDERMAN_TELEPORT, 1, 1);
+        pw.playEffect(pos, portalEffect, portalEffectData);
+        dw.playEffect(dest, portalEffect, portalEffectData);
+        pw.playSound(pos, portalSound, portalSoundVolume, portalSoundPitch);
+        dw.playSound(dest, portalSound, portalSoundVolume, portalSoundPitch);
 
         // Post-Teleportation Modifiers
         it = to.mods.iterator();
@@ -1257,16 +1412,32 @@ public final class AbyssPlugin extends JavaPlugin {
                 portal.effect = (short) random.nextInt(5);
 
                 final World w = center.getWorld();
-                center.subtract(0, portal.depth / 2, 0);
+                int min_y = portal.getMinimumLocation().getBlockY();
+                final double size = portal.getSize() - 0.5;
 
-                w.playEffect(center, Effect.MOBSPAWNER_FLAMES, 1);
+                if ( ! plugin.staticEffectFullHeight ) {
+                    center.subtract(0, (portal.depth / 2), 0);
+                    min_y = center.getBlockY() - 1;
+                }
+
+                while ( center.getBlockY() > min_y ) {
+                    center.subtract(0, 2, 0);
+                    final Location l;
+                    if ( plugin.staticEffectCentered ) {
+                        l = center;
+                    } else {
+                        l = center.clone().add(((random.nextDouble() * 2) - 1) * size, 1, ((random.nextDouble() * 2) - 1) * size);
+                    }
+
+                    w.playEffect(l, plugin.staticEffect, plugin.staticEffectData);
+                }
 
                 portal.effectSound--;
                 if (portal.effectSound > 0)
                     continue;
 
                 portal.effectSound = (short) (random.nextInt(5) + 6);
-                w.playSound(center, Sound.PORTAL, 0.2f, 1);
+                w.playSound(portal.getCenter(), plugin.staticSound, plugin.staticSoundVolume, plugin.staticSoundPitch);
             }
         }
     }

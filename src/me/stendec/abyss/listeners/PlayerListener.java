@@ -6,7 +6,6 @@ import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
@@ -47,18 +46,17 @@ public class PlayerListener implements Listener {
     }
 
 
-    private static HashSet<Byte> crap;
+    private static HashSet<Byte> transparentMaterials;
 
     static {
-        crap = new HashSet<Byte>();
-        crap.add((byte) Material.AIR.getId());
-        crap.add((byte) Material.STONE_BUTTON.getId());
-        crap.add((byte) Material.WOOD_BUTTON.getId());
+        transparentMaterials = new HashSet<Byte>();
+        transparentMaterials.add((byte) Material.AIR.getId());
+        transparentMaterials.add((byte) Material.STONE_BUTTON.getId());
+        transparentMaterials.add((byte) Material.WOOD_BUTTON.getId());
     }
 
     private Block getLiquid(Player player) {
-        for(Block b: player.getLineOfSight(crap, 6)) {
-            plugin.getLogger().info("Block: " + b.getType().name() + " @ " + b.getLocation().toVector());
+        for(Block b: player.getLineOfSight(transparentMaterials, 6)) {
             if (AbyssPlugin.validLiquid(b))
                 return b;
         }

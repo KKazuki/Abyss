@@ -56,7 +56,7 @@ public class ConfigureCommand extends ABCommand {
 
         // Now, apply our configuration.
         try {
-            configFromLore(portal, config);
+            ParseUtils.configFromLore(portal, config);
         } catch(IllegalArgumentException ex) {
             t().red("Configuration Error").send(sender);
             t("    ").gray(ex.getMessage()).send(sender);
@@ -75,77 +75,5 @@ public class ConfigureCommand extends ABCommand {
         portal.getDisplayName().darkgreen(" was updated successfully.").send(sender);
         return true;
     }
-
-    private void configFromLore(final ABPortal portal, final Map<String, String> config) {
-        if (config == null || portal == null || config.size() == 0)
-            return;
-
-        for(Map.Entry<String,String> entry: config.entrySet())
-            loreConfig(portal, entry.getKey(), entry.getValue());
-    }
-
-    private void configFromLore(final ABPortal portal, final ItemMeta meta) {
-        // If there's no lore, obviously this does nothing.
-        if (!meta.hasLore())
-            return;
-
-        configFromLore(portal, ParseUtils.tokenizeLore(meta.getLore()));
-    }
-
-    private static void requireValue(final String key, final String value) {
-        if (value == null || value.length() == 0)
-            throw new IllegalArgumentException(key + " must have a value.");
-    }
-
-    private static void loreConfig(final ABPortal portal, final String key, final String value) {
-        if (key.equals("owner")) {
-            requireValue(key, value);
-            portal.owner = value;
-
-        } else if (key.equals("color")) {
-            requireValue(key, value);
-            DyeColor color = ParseUtils.matchColor(value);
-            if ( color == null )
-                throw new IllegalArgumentException("Invalid color: " + value);
-
-            portal.color = color;
-
-        } else if (key.equals("id")) {
-            requireValue(key, value);
-            try {
-                portal.id = Short.parseShort(value);
-            } catch(NumberFormatException ex) {
-                throw new IllegalArgumentException("id must be a number between " + Short.MIN_VALUE + " and " + Short.MAX_VALUE);
-            }
-
-        } else if (key.equals("dest") || key.equals("destination")) {
-            requireValue(key, value);
-            try {
-                portal.destination = Short.parseShort(value);
-            } catch(NumberFormatException ex) {
-                throw new IllegalArgumentException("destination must be a number between " + Short.MIN_VALUE + " and " + Short.MAX_VALUE);
-            }
-
-        } else if (key.equals("velocity") || key.equals("speed")) {
-            requireValue(key, value);
-            try {
-                portal.velocityMultiplier = Integer.parseInt(value);
-            } catch(NumberFormatException ex) {
-                throw new IllegalArgumentException("velocity must be a number.");
-            }
-
-        } else if (key.equals("rot") || key.equals("rotation")) {
-            requireValue(key, value);
-            portal.setRotation(ParseUtils.matchRotation(value));
-
-        } else if (key.equals("size")) {
-            throw new IllegalArgumentException("size cannot be applied to existing portals.");
-
-        } else {
-            throw new IllegalArgumentException("Invalid option: " + key);
-        }
-    }
-
-
 
 }

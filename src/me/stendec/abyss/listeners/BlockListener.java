@@ -38,10 +38,6 @@ public class BlockListener implements Listener {
         if (block == null)
             return;
 
-        // For now, return on sneak for debugging.
-        if (event.getPlayer().isSneaking())
-            return;
-
         // Check to see if the block is protected.
         final ArrayList<ABPortal> portals = plugin.protectBlock(block);
         if ( portals == null ) {
@@ -177,10 +173,6 @@ public class BlockListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         final Block block = event.getBlockPlaced();
         if (block == null)
-            return;
-
-        // For now, return on sneak for debugging.
-        if (event.getPlayer().isSneaking())
             return;
 
         // Check to see if the block is protected.

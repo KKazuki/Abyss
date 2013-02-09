@@ -296,7 +296,7 @@ public class ABPortal implements Comparable<ABPortal> {
     public void setName(final String name) {
         Validate.notNull(name);
 
-        if ( this.name.equals(name) )
+        if ( this.name != null && this.name.equals(name) )
             return;
 
         final String old_name = this.name;
@@ -814,7 +814,119 @@ public class ABPortal implements Comparable<ABPortal> {
         return setModFrame(info, spawnFrame(loc, face));
     }
 
+    private Location l() {
+        return location.clone(); }
+
+    private Location l(final int x, final int y, final int z) {
+        return location.clone().add(x, y, z); }
+
     public void createEntities() {
+        // Don't do this if we've got existing frames.
+        if (!frames.isEmpty())
+            return;
+
+        ItemFrame if_network;
+        ItemFrame if_color;
+        ItemFrame if_id1;
+        ItemFrame if_id2;
+        ItemFrame if_dest1;
+        ItemFrame if_dest2;
+
+        // Make sure we have mods.
+        if (mods == null) {
+            int mod_count = Math.min(size, plugin.maximumMods);
+            mods = new ArrayList<ModInfo>(mod_count);
+            for(int index=0; index < mod_count; index++) {
+                mods.add(new ModInfo(this));
+            }
+        }
+
+        // Get the center two spots of each wall.
+        int half = (size / 2) - 1;
+        int odd = size % 2;
+
+        if ( rotation == Rotation.CLOCKWISE ) {
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(size - 1, 0, half), BlockFace.WEST);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(size - 1, 0, half + 1 + odd), BlockFace.WEST);
+
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size-2, 0, 0), BlockFace.SOUTH);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size-1, 0, 0), BlockFace.SOUTH);
+
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size-1, 0, size-1), BlockFace.NORTH);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size-2, 0, size-1), BlockFace.NORTH);
+
+            // Iterate through the mods, making frames.
+            Location ml = l(size - 1, -1, (size - mods.size()) / 2);
+            for(final ModInfo info: mods) {
+                setModFrame(info, ml, BlockFace.WEST);
+                ml.add(0, 0, 1);
+            }
+
+        } else if ( rotation == Rotation.FLIPPED ) {
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half + 1 + odd, 0, size - 1), BlockFace.NORTH);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(half, 0, size - 1), BlockFace.NORTH);
+
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size-1, 0, size-2), BlockFace.WEST);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size-1, 0, size-1), BlockFace.WEST);
+
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, size-1), BlockFace.EAST);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(0, 0, size-2), BlockFace.EAST);
+
+            // Iterate through the mods, making frames.
+            Location ml = l(size - (1 + ((size - mods.size()) / 2)), -1, size-1);
+            for(final ModInfo info: mods) {
+                setModFrame(info, ml, BlockFace.NORTH);
+                ml.add(-1, 0, 0);
+            }
+
+        } else if ( rotation == Rotation.COUNTER_CLOCKWISE ) {
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, half+1+odd), BlockFace.EAST);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(0, 0, half), BlockFace.EAST);
+
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(1, 0, size-1), BlockFace.NORTH);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, size-1), BlockFace.NORTH);
+
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(), BlockFace.SOUTH);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(1,0,0), BlockFace.SOUTH);
+
+            // Iterate through the mods, making frames.
+            Location ml = location.clone().add(0, -1, size - (1 + ((size - mods.size()) / 2)));
+            for(ModInfo info: mods) {
+                setModFrame(info, ml, BlockFace.EAST);
+                ml.add(0, 0, -1);
+            }
+
+        } else {
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half, 0, 0), BlockFace.SOUTH);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(half+1+odd, 0, 0), BlockFace.SOUTH);
+
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(0, 0, 1), BlockFace.EAST);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(), BlockFace.EAST);
+
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size-1, 0, 0), BlockFace.WEST);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size-1, 0, 1), BlockFace.WEST);
+
+            // Iterate through the mods, making frames.
+            Location ml = location.clone().add((size - mods.size()) / 2, -1, 0);
+            for(ModInfo info: mods) {
+                setModFrame(info, ml, BlockFace.SOUTH);
+                ml.add(1, 0, 0);
+            }
+        }
+
+        // Now that we've got the frames, update them all.
+        if_network.setItem(network);
+        if_color.setItem(new ItemStack(Material.WOOL, 1, color.getWoolData()));
+
+        setIDFrames(id, if_id1, if_id2);
+        setIDFrames(destination, if_dest1, if_dest2);
+
+
+        // Add this portal's frames to the manager.
+        plugin.getManager().addFrames(this);
+    }
+
+    private void old() {
         // Don't do this if we've got existing frames.
         if (!frames.isEmpty())
             return;

@@ -1,8 +1,10 @@
 package me.stendec.abyss.util;
 
+import me.stendec.abyss.ABPortal;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.*;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Dye;
 import org.bukkit.material.Wool;
 
@@ -74,6 +76,39 @@ public class ParseUtils {
         throw new IllegalArgumentException("rotation must be 0, 90, 180, 270, north, east, south, or west");
     }
 
+    public static Effect matchEffect(final String value) {
+        if ( value == null )
+            return null;
+
+        Effect result = null;
+
+        try {
+            result = Effect.getById(Integer.parseInt(value));
+        } catch(NumberFormatException ex) {}
+
+        if ( result == null ) {
+            final String filtered = value.toUpperCase().replaceAll("\\s+", "_").replaceAll("\\W", "");
+            try {
+                result = Effect.valueOf(filtered);
+            } catch(IllegalArgumentException ex) { }
+        }
+
+        return result;
+    }
+
+    public static Sound matchSound(final String value) {
+        if ( value == null )
+            return null;
+
+        final String filtered = value.toUpperCase().replaceAll("\\s+", "_").replaceAll("\\W", "");
+        try {
+            return Sound.valueOf(filtered);
+        } catch(IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+
     public static DyeColor matchColor(final String value) {
         if (value == null)
             return null;
@@ -86,7 +121,9 @@ public class ParseUtils {
 
         if (result == null) {
             final String filtered = value.toUpperCase().replaceAll("\\s+", "_").replaceAll("\\W", "");
-            result = DyeColor.valueOf(filtered);
+            try {
+                result = DyeColor.valueOf(filtered);
+            } catch(IllegalArgumentException ex) { }
         }
 
         return result;
@@ -128,9 +165,10 @@ public class ParseUtils {
         if ( value.contains(":") ) pairs = value.split("\\s*:\\s*", 2);
         else pairs = new String[]{value, "0"};
 
-        final Material material = Material.matchMaterial(pairs[0]);
-        if ( material == null )
-            return null;
+        final Material material;
+        try {
+            material = Material.matchMaterial(pairs[0]);
+        } catch(IllegalArgumentException ex) { return null; }
 
         Short damage = -1;
         try { damage = Short.parseShort(pairs[1]); }
@@ -177,6 +215,95 @@ public class ParseUtils {
             return UUID.fromString(string);
         } catch(IllegalArgumentException ex) {
             return null;
+        }
+    }
+
+
+    public static void configFromLore(final ABPortal portal, final Map<String, String> config) {
+        if (config == null || portal == null || config.size() == 0)
+            return;
+
+        for(Map.Entry<String,String> entry: config.entrySet())
+            loreConfig(portal, entry.getKey(), entry.getValue());
+    }
+
+    public static void configFromLore(final ABPortal portal, final ItemMeta meta) {
+        // If there's no lore, obviously this does nothing.
+        if (!meta.hasLore())
+            return;
+
+        configFromLore(portal, tokenizeLore(meta.getLore()));
+    }
+
+    public static void requireValue(final String key, final String value) {
+        if (value == null || value.length() == 0)
+            throw new IllegalArgumentException(key + " must have a value.");
+    }
+
+    public static void loreConfig(final ABPortal portal, final String key, final String value) {
+        if (key.equals("owner")) {
+            requireValue(key, value);
+            portal.owner = value;
+
+        } else if ( key.equals("name") ) {
+            requireValue(key, value);
+
+            // Check for collisions.
+            final ABPortal p = portal.getPlugin().getManager().getByName(value);
+            if ( p != null )
+                throw new IllegalArgumentException("A portal already exists with the name: " + value);
+
+            portal.setName(value);
+
+        } else if (key.equals("color")) {
+            requireValue(key, value);
+            DyeColor color = ParseUtils.matchColor(value);
+            if ( color == null )
+                throw new IllegalArgumentException("Invalid color: " + value);
+
+            portal.color = color;
+
+        } else if (key.equals("id")) {
+            requireValue(key, value);
+            try {
+                portal.id = Short.parseShort(value);
+            } catch(NumberFormatException ex) {
+                throw new IllegalArgumentException("id must be a number between " + Short.MIN_VALUE + " and " + Short.MAX_VALUE);
+            }
+
+        } else if (key.equals("dest") || key.equals("destination")) {
+            requireValue(key, value);
+            try {
+                portal.destination = Short.parseShort(value);
+            } catch(NumberFormatException ex) {
+                throw new IllegalArgumentException("destination must be a number between " + Short.MIN_VALUE + " and " + Short.MAX_VALUE);
+            }
+
+        } else if (key.equals("velocity") || key.equals("speed")) {
+            requireValue(key, value);
+            try {
+                portal.velocityMultiplier = Double.parseDouble(value);
+            } catch(NumberFormatException ex) {
+                throw new IllegalArgumentException("velocity must be a number");
+            }
+
+        } else if ( key.equals("range") ) {
+            requireValue(key, value);
+            try {
+                portal.rangeMultiplier = Double.parseDouble(value);
+            } catch(NumberFormatException ex) {
+                throw new IllegalArgumentException("range must be a number");
+            }
+
+        } else if (key.equals("rot") || key.equals("rotation")) {
+            requireValue(key, value);
+            portal.setRotation(ParseUtils.matchRotation(value));
+
+        } else if (key.equals("size")) {
+            throw new IllegalArgumentException("size cannot be applied to existing portals");
+
+        } else {
+            throw new IllegalArgumentException("Invalid option: " + key);
         }
     }
 
