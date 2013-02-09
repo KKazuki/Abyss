@@ -22,8 +22,8 @@ cooldown-ticks: 40
 
 # Distance Calculations
 limit-distance: true
-base-range: 100
-depth-multiplier: 50
+base-range: 50
+depth-multiplier: 25
 
 # Whether or not to use WorldGuard for region storage.
 # This is generally good since WorldGuard uses a proper tree for regions, which

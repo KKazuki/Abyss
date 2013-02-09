@@ -1,6 +1,5 @@
 package me.stendec.abyss.commands;
 
-import javafx.scene.effect.ColorInputBuilder;
 import me.stendec.abyss.*;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
@@ -19,7 +18,7 @@ public class ListCommand extends ABCommand {
     public ListCommand(final AbyssPlugin plugin) {
         super(plugin);
 
-        color = ChatColor.BLUE;
+        color = ChatColor.DARK_PURPLE;
         usage = "<+player> <personal|item|-> <color>";
     }
 

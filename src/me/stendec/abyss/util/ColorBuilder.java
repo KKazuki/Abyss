@@ -6,6 +6,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -61,6 +62,16 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
         for(final CommandSender sender: senders)
             sender.sendMessage(out);
 
+        return this;
+    }
+
+    public final ColorBuilder send(final Logger logger) {
+        return send(logger, Level.INFO);
+    }
+
+    public final ColorBuilder send(final Logger logger, final Level level) {
+        for(final String string: ChatColor.stripColor(sb.toString()).split("\n"))
+            logger.log(level, string);
         return this;
     }
 
@@ -964,6 +975,9 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
     ///////////////////////////////////////////////////////////////////////////
     // Appenders
     ///////////////////////////////////////////////////////////////////////////
+
+    public final ColorBuilder append(final String format, final Object... args) {
+        sb.append(String.format(format, args)); return this; }
 
     public final ColorBuilder append(final boolean b) {
         sb.append(b);

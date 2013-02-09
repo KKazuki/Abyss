@@ -29,7 +29,7 @@ public class ConfigureCommand extends ABCommand {
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
-        if ( !sender.isOp() && (!(sender instanceof Player) || !portal.canManipulate((Player) sender)) ) {
+        if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
             return false;
         }

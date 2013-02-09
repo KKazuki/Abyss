@@ -15,12 +15,14 @@ public abstract class ABCommand {
     protected final AbyssPlugin plugin;
     public String usage;
     public boolean require_portal;
+    public boolean allow_wand;
     public ChatColor color;
 
     public ABCommand(final AbyssPlugin plugin) {
         this.plugin = plugin;
         usage = null;
         require_portal = false;
+        allow_wand = true;
         color = ChatColor.WHITE;
     }
 

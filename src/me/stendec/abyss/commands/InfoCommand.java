@@ -11,6 +11,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -26,6 +27,11 @@ public class InfoCommand extends ABCommand {
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+        if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
+            t().red("Permission Denied").send(sender);
+            return false;
+        }
+
         if ( args != null && args.size() > 0 ) {
             t().red("Too many arguments.").send(sender);
             return false;
@@ -44,21 +50,22 @@ public class InfoCommand extends ABCommand {
         portal.getDisplayName(true).send(sender);
 
         // The UUID
-        if ( sender.isOp() )
+        if ( sender.hasPermission("abyss.detail.uuid") )
             t().gray("UUID: ").white(portal.uid).send(sender);
 
         // Network Information
         t().gray(ChatColor.WHITE, "Network: %s [%s]", network, portal.color.name()).send(sender);
 
         // Center Coordinates
-        t().gray("Center: ").darkgray(ChatColor.WHITE, "%d, %d, %d [%s]",
-            center.getBlockX(), center.getBlockY(), center.getBlockZ(), center.getWorld().getName()).send(sender);
+        if ( sender.hasPermission("abyss.detail.location") )
+            t().gray("Center: ").darkgray(ChatColor.WHITE, "%d, %d, %d [%s]",
+                center.getBlockX(), center.getBlockY(), center.getBlockZ(), center.getWorld().getName()).send(sender);
 
         // Portal Depth, Size, and Rotation
         t().gray(ChatColor.WHITE, "Depth: %-4d  Size: %-4d  Rotation: %s", portal.depth, portal.getSize(), portal.getRotation().name()).send(sender);
 
         // Other Stuff
-        t().gray(ChatColor.WHITE, "Closed: %-5s  Velocity: %4.2f  Range: %4.2f", !portal.valid, portal.velocityMultiplier, (portal.depth * portal.rangeMultiplier)).send(sender);
+        t().gray(ChatColor.WHITE, "Closed: %-5s  Velocity: %4.2f  Range: %4.2f", !portal.valid, portal.velocityMultiplier, portal.getRange()).send(sender);
 
         // ID and Destination
         t().gray(ChatColor.WHITE, "ID: %-5s  Destination: %s",

@@ -87,6 +87,25 @@ public abstract class PortalManager {
         return allPortals.entrySet();
     }
 
+    public final Iterator<ABPortal> iterator() {
+        return new PortalIterator(this);
+    }
+
+    public final void clear() {
+        for(final ABPortal portal: allPortals.values()) {
+            spatial_remove(portal);
+        }
+
+        allPortals.clear();
+        portalNames.clear();
+        portalFrames.clear();
+
+        networkPortals.clear();
+        networkPortalIds.clear();
+
+        playerPortals.clear();
+        playerPortalIds.clear();
+    }
 
     public final int size() {
         return allPortals.size();
@@ -103,8 +122,11 @@ public abstract class PortalManager {
         return ( uid == null ) ? null : getById(uid);
     }
 
-
     public final ArrayList<ABPortal> getNetworkForDestination(final ABPortal portal) {
+        return getNetworkForDestination(portal, true);
+    }
+
+    public final ArrayList<ABPortal> getNetworkForDestination(final ABPortal portal, final boolean filter_invalid) {
         final ArrayList<UUID> network = getNetwork(portal.network, portal.color, portal.owner);
         if ( network == null )
             return null;
@@ -120,7 +142,7 @@ public abstract class PortalManager {
         // Crazy For Loops!
         for(int index = (pind + 1) % size; index != pind; index = (index + 1) % size) {
             final ABPortal p = allPortals.get(network.get(index));
-            if ( p != null && p.valid )
+            if ( p != null && (!filter_invalid || p.valid) )
                 out.add(p);
         }
 
@@ -354,5 +376,45 @@ public abstract class PortalManager {
     public abstract ABPortal getUnder(final Location location);
     public abstract ArrayList<ABPortal> getNear(final Location location);
     public abstract ArrayList<ABPortal> getWithin(final Location minimum, final Location maximum);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Iterator
+    ///////////////////////////////////////////////////////////////////////////
+
+    public class PortalIterator implements Iterator<ABPortal> {
+
+        private final PortalManager manager;
+        private final ABPortal[] portals;
+        private int index;
+        private ABPortal last;
+
+        public PortalIterator(final PortalManager manager) {
+            this.manager = manager;
+
+            Collection<ABPortal> p = manager.allPortals.values();
+            portals = p.toArray(new ABPortal[p.size()]);
+
+            index = -1;
+            last = null;
+        }
+
+        public boolean hasNext() {
+            return (index + 1) < portals.length;
+        }
+
+        public ABPortal next() {
+            index++;
+            last = portals[index];
+            return last;
+        }
+
+        public void remove() {
+            if ( last == null )
+                throw new IllegalStateException();
+
+            manager.remove(last);
+            last = null;
+        }
+    }
 
 }

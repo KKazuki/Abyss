@@ -123,11 +123,14 @@ public final class AbyssPlugin extends JavaPlugin {
         commands.put("teleport", new TeleportCommand(this));
         commands.put("configure", new ConfigureCommand(this));
         commands.put("modifier", new ModifierCommand(this));
+        commands.put("destinations", new DestinationsCommand(this));
+        commands.put("reload", new ReloadCommand(this));
 
         aliases.put("remove", "delete");
         aliases.put("tp", "teleport");
         aliases.put("config", "configure");
         aliases.put("mod", "modifier");
+        aliases.put("dest", "destinations");
     }
 
 
@@ -195,7 +198,6 @@ public final class AbyssPlugin extends JavaPlugin {
         new ItemListener(this);
         new PlayerListener(this);
         new VehicleListener(this);
-        //new WorldListener(this);
 
 
         // Start the Task
@@ -879,11 +881,7 @@ public final class AbyssPlugin extends JavaPlugin {
         final UUID eid = entity.getUniqueId();
         if ( portal.uid.equals(entityLastPortal.get(eid)) ) {
             final Long time = entityLastTime.get(eid);
-
-            final long at = world.getFullTime();
-            getLogger().info("Now: " + at);
-
-            if ( time != null && at < time ) {
+            if ( time != null && world.getFullTime() < time ) {
                 // Make sure the cooldown period only works once.
                 entityLastPortal.remove(eid);
                 entityLastTime.remove(eid);
@@ -946,30 +944,8 @@ public final class AbyssPlugin extends JavaPlugin {
 
             // If either rangeMultiplier is infinite, don't deal with it.
             if ( limitDistance && !Double.isInfinite(from.rangeMultiplier) && !Double.isInfinite(to.rangeMultiplier) ) {
-
-                double distance;
-
-                // Handle different worlds.
-                if ( ! fc.getWorld().equals(dest.getWorld())) {
-                    Location f2 = fc.clone();
-                    f2.setWorld(dest.getWorld());
-
-                    double multiplier = 100;
-                    if ( from.eyeCount > 0 && to.eyeCount > 0 )
-                        multiplier = multiplier / Math.pow(4, from.eyeCount + to.eyeCount);
-
-                    distance = dest.distance(f2) * multiplier;
-
-                } else {
-                    distance = dest.distance(fc);
-                }
-
-                // Apply portal depth to the problem.
-                distance -= from.depth * from.rangeMultiplier;
-                distance -= to.depth * to.rangeMultiplier;
-
-                // If distance is still greater than zero, quit right now.
-                if ( distance > 0 )
+                // If there's any unaccounted for range, stop right now.
+                if ( to.checkRange(from) > 0 )
                     return null;
             }
 
@@ -1234,11 +1210,7 @@ public final class AbyssPlugin extends JavaPlugin {
         // Set cooldown information.
         final UUID eid = entity.getUniqueId();
         entityLastPortal.put(eid, to.uid);
-
-        long at = entity.getWorld().getFullTime() + cooldownTicks;
-        getLogger().info("Set to: " + at);
-
-        entityLastTime.put(eid, at);
+        entityLastTime.put(eid, entity.getWorld().getFullTime() + cooldownTicks);
 
         // Return the destination.
         return entity;

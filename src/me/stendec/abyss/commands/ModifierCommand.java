@@ -16,7 +16,7 @@ public class ModifierCommand extends ABCommand {
     public ModifierCommand(final AbyssPlugin plugin) {
         super(plugin);
 
-        color = ChatColor.LIGHT_PURPLE;
+        color = ChatColor.DARK_AQUA;
         require_portal = true;
     }
 

@@ -4,7 +4,7 @@ description: A water-based portal system for players.
 author: Stendec <me@stendec.me>
 
 main: me.stendec.abyss.AbyssPlugin
-softdepend: [BKCommonLib, WorldGuard, Vault]
+softdepend: [WorldGuard, Vault]
 
 commands:
     abyss:
@@ -36,6 +36,25 @@ permissions:
         description: Allows you to use the Compass portal modifier.
         default: op
 
+
+    abyss.detail.*:
+        description: Gives access to all portal details.
+        children:
+            abyss.detail.uuid: true
+            abyss.detail.distance: true
+            abyss.detail.location: true
+
+    abyss.detail.uuid:
+        description: Allows you to see a portal's UUID.
+        default: op
+    abyss.detail.distance:
+        description: Allows you to see precise portal distances.
+        default: op
+    abyss.detail.location:
+        description: Allows you to see precise portal locations.
+        default: op
+
+
     abyss.command.*:
         description: Gives access to all Abyss commands.
         children:
@@ -45,6 +64,8 @@ permissions:
             abyss.command.delete: true
             abyss.command.info: true
             abyss.command.list: true
+            abyss.command.modifier: true
+            abyss.command.reload: true
             abyss.command.teleport: true
             abyss.command.wand: true
 
@@ -53,19 +74,25 @@ permissions:
         default: op
 
     abyss.command.configure:
-        description: Gives access to the Configure command.
+        description: Sets portal configuration.
         default: op
     abyss.command.create:
-        description: Gives access to the Create command.
+        description: Creates a new portal at the target location.
         default: op
     abyss.command.delete:
-        description: Gives access to the Delete command.
+        description: Deletes the target portal.
         default: op
     abyss.command.info:
-        description: Gives access to the Info command.
+        description: Displays information on the target portal.
         default: true
     abyss.command.list:
-        description: Gives access to the List command.
+        description: Displays a list of portals.
+        default: op
+    abyss.command.modifier:
+        description: Set configuration on a portal's modifiers.
+        default: op
+    abyss.command.reload:
+        description: Reload's Abyss's configuration.
         default: op
     abyss.command.teleport:
         description: Gives access to the Teleport command.

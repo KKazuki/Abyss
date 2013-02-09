@@ -22,7 +22,7 @@ public class WandCommand extends ABCommand {
     public WandCommand(final AbyssPlugin plugin) {
         super(plugin);
 
-        usage = "<@block|@player> [command] <uses> <arguments>";
+        usage = "<@block|@player> <uses> [command] <arguments>";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
@@ -33,6 +33,16 @@ public class WandCommand extends ABCommand {
         if ( !(sender instanceof Player) && target == null) {
             t().red("You must provide a target block or player when using this command from the console.").send(sender);
             return false;
+        }
+
+        // Try getting a use count.
+        final String ustr = args.remove(0);
+        int uses = 0;
+        try {
+            uses = Integer.parseInt(ustr);
+        } catch(NumberFormatException ex) {
+            // It wasn't a use count, put it back.
+            args.add(0, ustr);
         }
 
         // Get the command.
@@ -63,26 +73,21 @@ public class WandCommand extends ABCommand {
             return false;
         }
 
-        // Check for a remaining uses count.
-        int uses = 0;
-        if ( args.size() > 0 ) {
-            final String ustr = args.remove(0);
-            try {
-                uses = Integer.parseInt(ustr);
-            } catch(NumberFormatException ex) {
-                t().red("Invalid use count: ").reset(ustr).send(sender);
-                return false;
-            }
-        }
-
         // Create the basic item.
         final ItemStack wand = new ItemStack(plugin.wandMaterial);
         final ItemMeta im = wand.getItemMeta();
 
         // Wand Name
         final ABCommand command = plugin.commands.get(cmd);
-        final String name = command.color + WordUtils.capitalize(cmd.replaceAll("_", " "));
-        im.setDisplayName(t().white(plugin.wandName).gray(" [").append(name).gray("]").toString());
+        final String name = WordUtils.capitalize(cmd.replaceAll("_", " "));
+
+        // Make sure it can be made a wand.
+        if ( ! command.allow_wand ) {
+            t().red("The command ").append(command.color).bold(name).red(" cannot be made into a wand.").send(sender);
+            return false;
+        }
+
+        im.setDisplayName(t().white(plugin.wandName).gray(" [").append(command.color).append(name).gray("]").toString());
 
         if ( args.size() > 0 || uses > 0 ) {
             ArrayList<String> lore = new ArrayList<String>(2);

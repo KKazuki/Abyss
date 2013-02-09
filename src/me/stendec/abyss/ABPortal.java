@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
+import java.util.logging.Level;
 
 public class ABPortal implements Comparable<ABPortal> {
 
@@ -950,6 +951,94 @@ public class ABPortal implements Comparable<ABPortal> {
     }
 
     // Portal Location Check
+
+    public double getRange() {
+        return plugin.baseRange + (rangeMultiplier * depth);
+    }
+
+    public double checkRange(final ABPortal portal) {
+        return checkRange(portal, getDistance(portal));
+    }
+
+    public double checkRange(final ABPortal portal, double distance) {
+        return distance - (getRange() + portal.getRange());
+    }
+
+    public double getDistance(final ABPortal portal) {
+        // Get the distance to the given portal.
+        if ( portal == null || portal.location == null || location == null )
+            return Double.POSITIVE_INFINITY;
+
+        final Location from = location.clone();
+        final Location to = portal.getLocation();
+
+        final World fromWorld = from.getWorld();
+        final World toWorld = to.getWorld();
+
+        final World.Environment fromEnv = fromWorld.getEnvironment();
+        final World.Environment toEnv = toWorld.getEnvironment();
+
+        // Ready to be uncommented in a time of great need.
+        // ColorBuilder out = new ColorBuilder().append("Distance Calculation").lf().
+        //         append("    From: %d, %d, %d [%s:%s]", from.getBlockX(), from.getBlockY(), from.getBlockZ(), fromWorld.getName(), fromEnv.name()).lf().
+        //         append("      To: %d, %d, %d [%s:%s]", to.getBlockX(), to.getBlockY(), to.getBlockZ(), toWorld.getName(), toEnv.name()).lf();
+
+        // If we're coming from the nether, adjust from coordinates.
+        if ( fromEnv == World.Environment.NETHER && toEnv != World.Environment.NETHER ) {
+            to.setX(to.getX() / 8);
+            to.setZ(to.getZ() / 8);
+        }
+
+        else if ( fromEnv != World.Environment.NETHER && toEnv == World.Environment.NETHER ) {
+            from.setX(from.getX() / 8);
+            from.setZ(from.getZ() / 8);
+        }
+
+        // Get the base distance.
+        from.setWorld(toWorld);
+        double distance = from.distance(to);
+
+        // out.append("    Base: %f", distance).lf();
+
+        final double fromEyes = 1 + eyeCount;
+        final double toEyes = 1 + portal.eyeCount;
+
+        // If we're not in the same world, impose multipliers based on the types.
+        if ( fromWorld.equals(toWorld) ) {
+            final double eyes = (eyeCount + portal.eyeCount);
+            if ( fromEnv == World.Environment.NORMAL )
+                distance /= (eyes * 0.5) + 1;
+
+            else if ( fromEnv == World.Environment.NETHER )
+                distance /= (eyes * 1.6) + 1;
+
+            else if ( fromEnv == World.Environment.THE_END )
+                distance /= (eyes * 0.2) + 1;
+
+        } else {
+            if ( fromEnv == World.Environment.NORMAL)
+                distance *= 3.75 / fromEyes;
+
+            else if ( fromEnv == World.Environment.NETHER )
+                distance *= 4.5 / fromEyes;
+
+            else if ( fromEnv == World.Environment.THE_END )
+                distance *= 16 / fromEyes;
+
+            if ( toEnv == World.Environment.NORMAL )
+                distance *= 3.75 / toEyes;
+
+            else if ( toEnv == World.Environment.NETHER )
+                distance *= 4.5 / toEyes;
+
+            else if ( toEnv == World.Environment.THE_END )
+                distance *= 16 / toEyes;
+        }
+
+        // out.append("   Final: %f", distance).send(plugin.getLogger(), Level.INFO);
+
+        return distance;
+    }
 
     public Location getMinimumLocation() {
         return minimum.clone();

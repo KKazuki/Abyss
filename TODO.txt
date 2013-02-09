@@ -2,91 +2,35 @@ Portal TO-DO
 
 Base Mechanics
 
-DONE	Naming for Easy Reference
-DONE	  - Auto-generation by owner/order? Like ixokai-3?
+	Portal Material
+	  - Custom material lists
+	  - Change portal material upon activation.
+	  - Configuration to protect player from lava damage.
+	  - Likely not to work with solid materials.
 
-DONE	Block Protection
-DONE	  - BlockBreakEvent
-DONE	  - BlockBurnEvent
-DONE	  - BlockFadeEvent
-DONE	  - BlockFormEvent
-DONE	  - BlockFromToEvent
-DONE	      - Fix water flowing not updating a portal.
-DONE	  - BlockIgniteEvent
-DONE	  - BlockPhysicsEvent
-DONE	  - BlockPistonExtendEvent
-DONE	  - BlockPistonRetractEvent
-DONE	  - BlockPlaceEvent
-DONE	  - EntityChangeBlockEvent
-DONE	  - LeavesDecayEvent
-DONE	  - StructureGrowEvent
+	Frame Material
+	  - Custom valid material lists.
+	  - Configure materials can be mixed / must match
+	  - Use frame material as part of the network?
 
-DONE	Iris Detection
-	  - Happens automatically thanks to the block protection.
+	Frames
+	  - Configuration to only require corners for top x blocks
+	    - Set x to 0 for no corners required.
 
-DONE	Portal Cooldown
-DONE	Static Effect
-	  - Configurable?
-
-DONE	Portal Range
-	  - Tweak to find a good default value.
-
-	Portal Configuration Time Limit
-DONE	Fix Minecarts
-DONE	  - Support minecarts with entities
-	  - Special cross-world code
-
-DONE	Optimise portal block checks.
-	  - Do it again, using new knowledge.
+	Static Portal Effect
+	  - Configuration to choose an effect, delay, etc.
 
 
 Portal Modifiers
-DONE	Add support for a common "silent" flag.
-
-DONE	Execute Both Portals' Modifiers on Teleport
-DONE	Execute Modifiers *after* Successful Teleport
-DONE	Pre-Teleport Event
-
-DONE	Bed - Set Player Spawn
-DONE	Book - Show Message Upon Arrival
-DONE	Buttons & Pressure Plates - Trigger Redstone
-----	Command Block - Execute Command (Support Signs + Books)
-	  - Too Difficult. Just use Button + Command Block
-
-DONE	Compass - Set Compass Target
-DONE	Dispenser - Dispense Items
-1.5	Dropper - Drop Items (Combine with Dispenser)
-????	Emerald Block - Economy / Locking
-DONE	Ender Pearl - Increase Portal Range
-1.5	Hopper - Take Item(s) from Player
-DONE	Obsidian - Prevent Teleporting To	
-DONE	Slime Ball - Increase Velocity
-DONE	Soul Sand - Prevent Teleporting Away
+1.5	Dropper - Drop Items (Combine code with Dispenser)
+	Emerald (Block?) - Economy Interaction with Vault
+1.5	Hopper - Take Item(s) from Entities
 
 
 Portal Tools
-	Support for Limited Use Tools
-
-DONE	Portal Information
-DONE	Create Portal
-DONE	Destroy Portal
-DONE	Configure Portal
-	Configure Portal Modifier
-	List Destinations
-	Move Modifier Utility Block Location
+	Move Modifier Utility Block
 	  - For example, make the dispenser modifier draw blocks from a
 	    chest at an arbitrary location.
-
-
-Portal Commands
-	Configuration Reload
-DONE	Wand Spawner
-DONE	List Portals
-DONE	Teleport to Portal
-
-
-Permissions
-	Figure out Permissions
 
 
 Alternate Creation Systems
