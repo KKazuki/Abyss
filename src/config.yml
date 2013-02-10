@@ -48,3 +48,58 @@ static-sound:
     name: portal
     volume: 0.2
     pitch: 1
+
+
+# Entity Type Whitelist
+# Only entities with the listed types can go through portals. This is to make
+# sure we don't accidentally destroy some sort of entity state that we can't
+# recreate when we clone the entity.
+
+entity-type-whitelist:
+  - Item
+  - XPOrb
+  - Painting
+  - Arrow
+  - Snowball
+  - Fireball
+  - SmallFireball
+  - ThrownEnderpearl
+  - EyeOfEnderSignal
+  - ThrownExpBottle
+  - ItemFrame
+  - WitherSkull
+  - PrimedTnt
+  - FallingSand
+  - FireworksRocketEntity
+  - Minecart
+  - Boat
+  - Creeper
+  - Skeleton
+  - Spider
+  - Giant
+  - Zombie
+  - Slime
+  - Ghast
+  - PigZombie
+  - Enderman
+  - CaveSpider
+  - Silverfish
+  - Blaze
+  - LavaSlime
+  - EnderDragon
+  - WitherBoss
+  - Bat
+  - Witch
+  - Pig
+  - Sheep
+  - Cow
+  - Chicken
+  - Squid
+  - Wolf
+  - MushroomCow
+  - SnowMan
+  - Ozelot
+  - VillagerGolem
+  - EnderCrystal
+  - SPLASH_POTION
+  - EGG

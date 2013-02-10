@@ -13,10 +13,7 @@ import org.bukkit.material.Colorable;
 import org.bukkit.material.Directional;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class EntityUtils {
 
@@ -231,13 +228,22 @@ public class EntityUtils {
     }
 
     public static Entity teleport(final Entity entity, final Location destination, final PlayerTeleportEvent.TeleportCause cause) {
+        return teleport(entity, destination, cause, null);
+    }
+
+    public static Entity teleport(final Entity entity, final Location destination, final PlayerTeleportEvent.TeleportCause cause, final HashSet<EntityType> whitelist) {
         if ( entity instanceof Player || entity.getWorld().equals(destination.getWorld()) ) {
             if ( ! entity.teleport(destination, cause) )
                 return null;
             return entity;
         }
 
-        Entity instance;
+        final EntityType type = entity.getType();
+        Entity instance = null;
+
+        // If the entity type isn't whitelisted, don't let them through.
+        if ( whitelist != null && !whitelist.contains(type) )
+            return null;
 
         // Clone the entity.
         if ( entity instanceof FallingBlock ) {

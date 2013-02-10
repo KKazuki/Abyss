@@ -2,7 +2,7 @@ Portal TO-DO
 
 Base Mechanics
 
-	Entity Type Whitelist
+DONE	Entity Type Whitelist
 	  - Make a list of entity types we can preserve perfectly
 	    when cloning, and by default only let those entities
 	    through the portals.

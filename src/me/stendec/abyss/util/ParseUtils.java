@@ -3,6 +3,7 @@ package me.stendec.abyss.util;
 import me.stendec.abyss.ABPortal;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.*;
+import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Dye;
@@ -95,6 +96,29 @@ public class ParseUtils {
 
         return result;
     }
+
+
+    public static EntityType matchEntityType(final String value) {
+        if ( value == null )
+            return null;
+
+        EntityType result = null;
+
+        try {
+            result = EntityType.fromId(Integer.parseInt(value));
+        } catch(NumberFormatException ex) {}
+
+        if ( result == null )
+            result = EntityType.fromName(value);
+
+        if ( result == null ) {
+            final String filtered = value.toUpperCase().replaceAll("\\s+", "_").replaceAll("\\W", "");
+            result = EntityType.valueOf(filtered);
+        }
+
+        return result;
+    }
+
 
     public static Sound matchSound(final String value) {
         if ( value == null )

@@ -23,6 +23,10 @@ permissions:
         description: Allows you to travel through a portal.
         default: true
 
+    abyss.moderate:
+        description: Allows you to manipulate the portals of other players.
+        default: op
+
     abyss.modifiers.*:
         description: Gives access to all Abyss modifiers.
         children:

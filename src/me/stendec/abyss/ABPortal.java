@@ -14,7 +14,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
-import java.util.logging.Level;
 
 public class ABPortal implements Comparable<ABPortal> {
 
@@ -279,7 +278,7 @@ public class ABPortal implements Comparable<ABPortal> {
     // Permissions
 
     public boolean canManipulate(Player player) {
-        return (player.isOp() || player.getName().equals(owner));
+        return ( player.getName().equalsIgnoreCase(owner) || player.hasPermission("abyss.moderate") );
     }
 
     // Name
@@ -496,11 +495,12 @@ public class ABPortal implements Comparable<ABPortal> {
         manager.removeFromNetwork(this);
         manager.removeFromNetworkIds(this);
 
-
         this.color = color;
         if (!frames.isEmpty())
             frames.get(FrameInfo.Frame.COLOR).getFrame(true).
                     setItem(new ItemStack(Material.WOOL, 1, color.getWoolData()));
+        else
+            plugin.getLogger().info("Frames are empty.");
 
         manager.addToNetwork(this);
         manager.addToNetworkIds(this);

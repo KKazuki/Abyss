@@ -20,7 +20,6 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -106,6 +105,9 @@ public final class AbyssPlugin extends JavaPlugin {
     // Portal Effect Task
     private BukkitTask task;
 
+    // Entity Whitelist
+    public HashSet<EntityType> entityTypeWhitelist;
+
     // Command Storage
     public HashMap<String, ABCommand> commands;
     public HashMap<String, String> aliases;
@@ -163,7 +165,6 @@ public final class AbyssPlugin extends JavaPlugin {
         entityLastTime = new HashMap<UUID, Long>();
         lastId = new HashMap<String, Integer>();
         portalDestroyTime = new HashMap<UUID, Long>();
-
 
         // Load Configuration
         configure();
@@ -325,6 +326,12 @@ public final class AbyssPlugin extends JavaPlugin {
             }
         }
 
+        final ArrayList<String> wl = new ArrayList<String>(entityTypeWhitelist.size());
+        for(final EntityType type: entityTypeWhitelist)
+            wl.add(type.name());
+
+        config.set("entity-white-list", wl);
+
         // Now, save the configuration to disk.
         saveConfig();
     }
@@ -336,6 +343,19 @@ public final class AbyssPlugin extends JavaPlugin {
 
         final FileConfiguration config = getConfig();
         final Logger log = getLogger();
+
+        // Entity Type Whitelist
+        entityTypeWhitelist = new HashSet<EntityType>();
+        if ( config.contains("entity-type-whitelist") ) {
+            for(final String string: config.getStringList("entity-type-whitelist")) {
+                final EntityType en = ParseUtils.matchEntityType(string);
+                if ( en != null ) {
+                    entityTypeWhitelist.add(en);
+                } else
+                    log.warning("Invalid entity type in whitelist: " + string);
+            }
+        }
+
 
         // Portal Wand
         wandName = config.getString("wand-name");
@@ -1200,7 +1220,7 @@ public final class AbyssPlugin extends JavaPlugin {
         // Teleport the entity. This is the last point that can return null.
         // This has a chance of cloning the entity and returning a new one,
         // because Minecraft entities are weird.
-        Entity after_port = EntityUtils.teleport(entity, dest, PlayerTeleportEvent.TeleportCause.PLUGIN);
+        Entity after_port = EntityUtils.teleport(entity, dest, PlayerTeleportEvent.TeleportCause.PLUGIN, entityTypeWhitelist);
         if ( after_port == null ) {
             // If we can't go... too bad for the passenger!
             return null;
