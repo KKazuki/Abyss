@@ -22,9 +22,12 @@ import java.util.Map;
 public class CreateCommand extends ABCommand {
 
     public CreateCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "create");
 
         color = ChatColor.DARK_GREEN;
+        require_block = true;
+
+        description = "Create a new portal at the targeted block.";
 
     }
 

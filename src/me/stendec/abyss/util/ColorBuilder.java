@@ -3,6 +3,7 @@ package me.stendec.abyss.util;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
@@ -62,6 +63,11 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
         for(final CommandSender sender: senders)
             sender.sendMessage(out);
 
+        return this;
+    }
+
+    public final ColorBuilder sendByLine(final CommandSender sender) {
+        sender.sendMessage(sb.toString().split("\n"));
         return this;
     }
 
@@ -976,143 +982,92 @@ public final class ColorBuilder implements Appendable, CharSequence, Serializabl
     // Appenders
     ///////////////////////////////////////////////////////////////////////////
 
+    public final ColorBuilder append(final ColorBuilder cb) {
+        sb.append(cb.sb); return this; }
+
     public final ColorBuilder append(final String format, final Object... args) {
         sb.append(String.format(format, args)); return this; }
 
     public final ColorBuilder append(final boolean b) {
-        sb.append(b);
-        return this;
-    }
+        sb.append(b); return this; }
 
     public final ColorBuilder append(final char c) {
-        sb.append(c);
-        return this;
-    }
+        sb.append(c); return this; }
 
     public final ColorBuilder append(final char[] str) {
-        sb.append(str);
-        return this;
-    }
+        sb.append(str); return this; }
 
     public final ColorBuilder append(final char[] str, final int offset, final int len) {
-        sb.append(str, offset, len);
-        return this;
-    }
+        sb.append(str, offset, len); return this; }
 
     public final ColorBuilder append(final CharSequence s) {
-        sb.append(s);
-        return this;
-    }
+        sb.append(s); return this; }
 
     public final ColorBuilder append(final CharSequence s, final int start, final int end) {
-        sb.append(s, start, end);
-        return this;
-    }
+        sb.append(s, start, end); return this; }
 
     public final ColorBuilder append(final double d) {
-        sb.append(d);
-        return this;
-    }
+        sb.append(d); return this; }
 
     public final ColorBuilder append(final float f) {
-        sb.append(f);
-        return this;
-    }
+        sb.append(f); return this; }
 
     public final ColorBuilder append(final int i) {
-        sb.append(i);
-        return this;
-    }
+        sb.append(i); return this; }
 
     public final ColorBuilder append(final long lng) {
-        sb.append(lng);
-        return this;
-    }
+        sb.append(lng); return this; }
 
     public final ColorBuilder append(final Object obj) {
-        sb.append(obj);
-        return this;
-    }
+        sb.append(obj); return this; }
 
     public final ColorBuilder append(final String str) {
-        sb.append(str);
-        return this;
-    }
+        sb.append(str); return this; }
 
     public final ColorBuilder append(final StringBuffer sb) {
-        sb.append(sb);
-        return this;
-    }
+        sb.append(sb); return this; }
 
     public final ColorBuilder append(final ChatColor color, final boolean b) {
-        sb.append(color).append(b);
-        return this;
-    }
+        sb.append(color).append(b); return this; }
 
     public final ColorBuilder append(final ChatColor color, final char c) {
-        sb.append(color).append(c);
-        return this;
-    }
+        sb.append(color).append(c); return this; }
 
     public final ColorBuilder append(final ChatColor color, final char[] str) {
-        sb.append(color).append(str);
-        return this;
-    }
+        sb.append(color).append(str); return this; }
 
     public final ColorBuilder append(final ChatColor color, final char[] str, final int offset, final int len) {
-        sb.append(color).append(str, offset, len);
-        return this;
-    }
+        sb.append(color).append(str, offset, len); return this; }
 
     public final ColorBuilder append(final ChatColor color, final CharSequence s) {
-        sb.append(color).append(s);
-        return this;
-    }
+        sb.append(color).append(s); return this; }
 
     public final ColorBuilder append(final ChatColor color, final CharSequence s, final int start, final int end) {
-        sb.append(color).append(s, start, end);
-        return this;
-    }
+        sb.append(color).append(s, start, end); return this; }
 
     public final ColorBuilder append(final ChatColor color, final double d) {
-        sb.append(color).append(d);
-        return this;
-    }
+        sb.append(color).append(d); return this; }
 
     public final ColorBuilder append(final ChatColor color, final float f) {
-        sb.append(color).append(f);
-        return this;
-    }
+        sb.append(color).append(f); return this; }
 
     public final ColorBuilder append(final ChatColor color, final int i) {
-        sb.append(color).append(i);
-        return this;
-    }
+        sb.append(color).append(i); return this; }
 
     public final ColorBuilder append(final ChatColor color, final long lng) {
-        sb.append(color).append(lng);
-        return this;
-    }
+        sb.append(color).append(lng); return this; }
 
     public final ColorBuilder append(final ChatColor color, final Object obj) {
-        sb.append(color).append(obj);
-        return this;
-    }
+        sb.append(color).append(obj); return this; }
 
     public final ColorBuilder append(final ChatColor color, final String str) {
-        sb.append(color).append(str);
-        return this;
-    }
+        sb.append(color).append(str); return this; }
 
     public final ColorBuilder append(final ChatColor color, final StringBuffer sb) {
-        sb.append(color).append(sb);
-        return this;
-    }
+        sb.append(color).append(sb); return this; }
 
     public final ColorBuilder appendCodePoint(final int codePoint) {
-        sb.appendCodePoint(codePoint);
-        return this;
-    }
+        sb.appendCodePoint(codePoint); return this; }
 
     ///////////////////////////////////////////////////////////////////////////
     // Other Stuff

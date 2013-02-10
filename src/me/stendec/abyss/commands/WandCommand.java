@@ -20,33 +20,46 @@ import java.util.Collections;
 public class WandCommand extends ABCommand {
 
     public WandCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "wand");
 
-        usage = "<@block|@player> <uses> [command] <arguments>";
+        minimumArguments = 1;
+        try_block = true;
+
+        usage = "<uses> [command] <arguments>";
+        description = "Create a wand for the given command, optionally with the" +
+                " given number of uses and the given arguments.";
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
-        if ( args.size() == 0 )
-            throw new NeedsHelp();
+    public boolean run(final CommandSender sender, final PlayerInteractEvent event, Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+        // First, try for the optional location.
+        String arg = args.remove(0);
+        if ( arg.startsWith("@") || arg.startsWith("+") || arg.startsWith("*") ) {
+            try {
+                target = parseBlock(sender, arg);
+            } catch(IllegalArgumentException ex) {
+                sender.sendMessage(ex.getMessage());
+                return false;
+            }
 
-        // If the sender isn't a player, and we don't have a block to drop the wand at, die.
-        if ( !(sender instanceof Player) && target == null) {
-            t().red("You must provide a target block or player when using this command from the console.").send(sender);
-            return false;
+            if ( args.size() > 0 )
+                arg = args.remove(0);
+            else {
+                t().red("Not enough arguments.").send(sender);
+                return false;
+            }
         }
 
-        // Try getting a use count.
-        final String ustr = args.remove(0);
+        // Now, try for the optional use count.
         int uses = 0;
         try {
-            uses = Integer.parseInt(ustr);
+            uses = Integer.parseInt(arg);
         } catch(NumberFormatException ex) {
-            // It wasn't a use count, put it back.
-            args.add(0, ustr);
+            // If it's not a valid number, put it back.
+            args.add(0, arg);
         }
 
-        // Get the command.
-        String cmd = args.remove(0).toLowerCase();
+        // Now, get the command.
+        String cmd = args.remove(0);
         if ( plugin.aliases.containsKey(cmd) )
             cmd = plugin.aliases.get(cmd);
 
@@ -87,7 +100,7 @@ public class WandCommand extends ABCommand {
             return false;
         }
 
-        im.setDisplayName(t().white(plugin.wandName).gray(" [").append(command.color).append(name).gray("]").toString());
+        im.setDisplayName(t().white(plugin.wandName).darkgray(command.color, " [%s]", name).toString());
 
         if ( args.size() > 0 || uses > 0 ) {
             ArrayList<String> lore = new ArrayList<String>(2);

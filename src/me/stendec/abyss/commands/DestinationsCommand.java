@@ -15,20 +15,18 @@ import java.util.ArrayList;
 public class DestinationsCommand extends ABCommand {
 
     public DestinationsCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "destinations");
 
         color = ChatColor.LIGHT_PURPLE;
+        maximumArguments = 0;
         require_portal = true;
+
+        description = "List all the targeted portal's potential destinations.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws ABCommand.NeedsHelp {
         if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
-            return false;
-        }
-
-        if ( args != null && args.size() > 0 ) {
-            t().red("Too many arguments.").send(sender);
             return false;
         }
 

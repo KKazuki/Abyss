@@ -15,20 +15,18 @@ import java.util.ArrayList;
 public class DeleteCommand extends ABCommand {
 
     public DeleteCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "delete");
 
         color = ChatColor.RED;
         require_portal = true;
+        maximumArguments = 0;
+
+        description = "Delete the targeted portal.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
-            return false;
-        }
-
-        if ( args != null && args.size() > 0 ) {
-            t().red("Too many arguments.").send(sender);
             return false;
         }
 

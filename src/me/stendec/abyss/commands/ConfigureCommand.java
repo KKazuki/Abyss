@@ -21,11 +21,14 @@ import java.util.Map;
 public class ConfigureCommand extends ABCommand {
 
     public ConfigureCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "configure");
 
         color = ChatColor.AQUA;
         require_portal = true;
-        usage = "[@block|@player|portal] <[key: value]; ...>";
+        minimumArguments = 1;
+
+        usage = "<[key: value]; ...>";
+        description = "Apply the given configuration to the targeted portal.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {

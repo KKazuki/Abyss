@@ -14,10 +14,14 @@ import java.util.ArrayList;
 public class ModifierCommand extends ABCommand {
 
     public ModifierCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "modifier");
 
         color = ChatColor.DARK_AQUA;
         require_portal = true;
+        minimumArguments = 1;
+
+        usage = "<[key: value]; ...>";
+        description = "Apply the given configuration to the targeted portal modifier.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws ABCommand.NeedsHelp {

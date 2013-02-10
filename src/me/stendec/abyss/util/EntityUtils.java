@@ -1,8 +1,6 @@
 package me.stendec.abyss.util;
 
-import org.bukkit.Location;
-import org.bukkit.Rotation;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -16,10 +14,26 @@ import org.bukkit.material.Directional;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
 public class EntityUtils {
+
+    public static Material[] transparentMaterials;
+    public static HashSet<Byte> transparentBytes;
+
+    static {
+        transparentMaterials = new Material[]{
+                Material.AIR,
+                Material.STONE_BUTTON, Material.WOOD_BUTTON,
+                Material.WALL_SIGN, Material.LADDER,
+                Material.VINE, Material.SKULL};
+
+        transparentBytes = new HashSet<Byte>();
+        for(final Material mat: transparentMaterials)
+            transparentBytes.add((byte) mat.getId());
+    }
 
     public static BlockFace getFacing(Entity entity) {
         double rot = (entity.getLocation().getYaw() - 180) % 360;

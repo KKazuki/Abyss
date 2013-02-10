@@ -22,7 +22,7 @@ Base Mechanics
 	  - Configuration to only require corners for top x blocks
 	    - Set x to 0 for no corners required.
 
-	Static Portal Effect
+DONE	Static Portal Effect
 	  - Configuration to choose an effect, delay, etc.
 
 

@@ -170,11 +170,14 @@ public class ParseUtils {
             material = Material.matchMaterial(pairs[0]);
         } catch(IllegalArgumentException ex) { return null; }
 
-        Short damage = -1;
+        if ( material == null )
+            return null;
+
+        Short damage = null;
         try { damage = Short.parseShort(pairs[1]); }
         catch(NumberFormatException ex) { }
 
-        if ( damage < 0 )
+        if ( damage == null )
             return null;
 
         return new ItemStack(material, 1, damage);

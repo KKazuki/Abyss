@@ -13,18 +13,15 @@ import java.util.ArrayList;
 public class ReloadCommand extends ABCommand {
 
     public ReloadCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "reload");
 
-        usage = "<all>";
         allow_wand = false;
+        maximumArguments = 0;
+
+        description = "Reload Abyss's configuration from file.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
-        if ( args != null && args.size() > 0 ) {
-            t().red("Too many arguments.").send(sender);
-            return false;
-        }
-
         // First, save out the current portals.
         plugin.savePortals();
 

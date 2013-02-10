@@ -16,43 +16,49 @@ import java.util.*;
 public class ListCommand extends ABCommand {
 
     public ListCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "list");
 
         color = ChatColor.DARK_PURPLE;
-        usage = "<+player> <personal|item|-> <color>";
+        maximumArguments = 3;
+
+        usage = "<@owner> <personal|item|all> <color>";
+        description = "List the portals that match the given criteria.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
-
         // See if we've got a network to iterate.
         String owner = (portal != null) ? portal.owner : null;
         ItemStack network = (portal != null) ? portal.network : null;
         DyeColor color = (portal != null) ? portal.color : null;
 
-        if ( args.size() > 0 ) {
-            final String arg = args.get(0);
-            if ( arg.length() > 0 && arg.charAt(0) == '+' ) {
-                owner = args.remove(0).substring(1);
-                if ( owner.length() == 0 )
-                    owner = null;
+        if ( args.size() > 0 && args.get(0).startsWith("@") ) {
+            final String arg = args.remove(0).substring(1);
+            OfflinePlayer player = plugin.getServer().getOfflinePlayer(arg);
+            if ( ! player.hasPlayedBefore() ) {
+                t().red("Invalid player name: ").reset(arg).send(sender);
+                return false;
             }
+
+            owner = player.getName();
         }
 
         if ( args.size() > 0 ) {
-            // Try reading an item stack.
+            // Try reading the network.
             final String arg = args.remove(0);
-            if ( ! arg.equals("-") ) {
+            if ( arg.equalsIgnoreCase("all") ) {
+                network = null;
+            } else if ( arg.equalsIgnoreCase("personal") ) {
+                network = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+            } else {
                 network = ParseUtils.matchItem(arg);
-                if ( network == null )
-                    if ( "personal".startsWith(arg.toLowerCase()) )
-                        network = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
-                    else {
-                        t().red("Invalid network: ").reset(arg).send(sender);
-                        return false;
-                    }
+                if ( network == null ) {
+                    t().red("Invalid network item: ").reset(arg).send(sender);
+                    return false;
+                }
             }
         }
 
+        // Try reading a color.
         if ( args.size() > 0 ) {
             final String arg = args.remove(0);
             color = ParseUtils.matchColor(arg);
@@ -60,6 +66,12 @@ public class ListCommand extends ABCommand {
                 t().red("Invalid color: ").reset(arg).send(sender);
                 return false;
             }
+        }
+
+        // If we've still got arguments, we've got too many.
+        if ( args.size() > 0 ) {
+            t().red("Too many arguments.").send(sender);
+            return false;
         }
 
         // Iterate over the worlds. Store our output in a ColorBuilder for now,

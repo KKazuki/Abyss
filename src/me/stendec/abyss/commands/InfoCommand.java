@@ -21,19 +21,17 @@ import java.util.Map;
 public class InfoCommand extends ABCommand {
 
     public InfoCommand(final AbyssPlugin plugin) {
-        super(plugin);
+        super(plugin, "information");
 
         require_portal = true;
+        maximumArguments = 0;
+
+        description = "Display information about the targeted portal.";
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
-            return false;
-        }
-
-        if ( args != null && args.size() > 0 ) {
-            t().red("Too many arguments.").send(sender);
             return false;
         }
 

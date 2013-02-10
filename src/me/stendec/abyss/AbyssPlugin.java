@@ -20,7 +20,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.Configuration;
+import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -135,22 +135,23 @@ public final class AbyssPlugin extends JavaPlugin {
         commands = new HashMap<String, ABCommand>();
         aliases = new HashMap<String, String>();
 
-        commands.put("info", new InfoCommand(this));
-        commands.put("wand", new WandCommand(this));
-        commands.put("create", new CreateCommand(this));
-        commands.put("delete", new DeleteCommand(this));
-        commands.put("list", new ListCommand(this));
-        commands.put("teleport", new TeleportCommand(this));
-        commands.put("configure", new ConfigureCommand(this));
-        commands.put("modifier", new ModifierCommand(this));
-        commands.put("destinations", new DestinationsCommand(this));
-        commands.put("reload", new ReloadCommand(this));
+        new InfoCommand(this);
+        new WandCommand(this);
+        new CreateCommand(this);
+        new DeleteCommand(this);
+        new ListCommand(this);
+        new TeleportCommand(this);
+        new ConfigureCommand(this);
+        new ModifierCommand(this);
+        new DestinationsCommand(this);
+        new ReloadCommand(this);
 
         aliases.put("remove", "delete");
         aliases.put("tp", "teleport");
         aliases.put("config", "configure");
         aliases.put("mod", "modifier");
         aliases.put("dest", "destinations");
+        aliases.put("info", "information");
     }
 
 
@@ -640,11 +641,13 @@ public final class AbyssPlugin extends JavaPlugin {
             if ( it.next().trim().length() == 0 )
                 it.remove();
 
-        // See if this is a help command.
-        boolean help = false;
-        if ( args.size() > 0 && args.get(0).equalsIgnoreCase("help") ) {
-            help = true;
-            args.remove(0);
+        // If we need help, move that *after* the sub-command.
+        if ( label.equals("abyss") && args.size() > 0 && args.get(0).equalsIgnoreCase("help") ) {
+            if ( args.size() > 1 ) {
+                final String help = args.remove(0);
+                args.add(1, help);
+            } else
+                return false;
         }
 
         // Determine the sub-command.
@@ -681,8 +684,10 @@ public final class AbyssPlugin extends JavaPlugin {
         }
 
         // If we still don't have one, return.
-        if ( cmd == null )
-            return false;
+        if ( cmd == null ) {
+            t().red("No such sub-command: ").reset(cmdkey).send(sender);
+            return true;
+        }
 
         // Make sure we've got permission to do this.
         final PluginManager pm = getServer().getPluginManager();
@@ -692,103 +697,8 @@ public final class AbyssPlugin extends JavaPlugin {
             return true;
         }
 
-
-        // Check for a block.
-        Block block = null;
-        if ( args.size() > 0 ) {
-            final String key = args.get(0);
-            if ( key.length() > 0 && key.charAt(0) == '@' ) {
-                args.remove(0);
-                Location loc = null;
-
-                // First, try getting a player with that name.
-                Player player = getServer().getPlayer(key.substring(1));
-                if ( player != null )
-                    loc = player.getLocation();
-
-                if ( loc == null && key.contains(",") ) {
-                    final World world = (sender instanceof Player) ? ((Player) sender).getWorld() : null;
-                    loc = ParseUtils.matchLocation(key.substring(1), world);
-                }
-
-                if ( loc == null ) {
-                    t().red("Invalid player name or block location: ").reset(key).send(sender);
-                    return true;
-                }
-
-                block = loc.getBlock();
-            }
-        }
-
-
-        // If we have arguments, and the command needs a portal, parse the next argument as that.
-        ABPortal portal = (block != null) ? manager.getAt(block) : null;
-        if ( cmd.require_portal && portal == null ) {
-            if ( block != null ) {
-                t().red("No portal at: ").darkgray(ChatColor.WHITE, "%d, %d, %d [%s]", block.getX(), block.getY(), block.getZ(), block.getWorld().getName()).send(sender);
-                return true;
-            }
-
-            if ( args.size() > 0 ) {
-                final String key = args.remove(0);
-
-                // First, see if it's a UUID. If not, try using it as a name.
-                try {
-                    portal = manager.getById(UUID.fromString(key));
-                } catch(IllegalArgumentException ex) { }
-
-                if ( portal == null )
-                    portal = manager.getByName(key);
-
-                // If it's not a valid name, try treating it as a location.
-                if ( portal == null ) {
-                    final World world = (sender instanceof Player) ? ((Player) sender).getWorld() : null;
-                    final Location loc = ParseUtils.matchLocation(key, world);
-                    if ( loc != null )
-                        portal = manager.getAt(loc);
-                }
-
-                if ( portal == null) {
-                    t().red("Invalid portal: ").reset(key).send(sender);
-                    return true;
-                }
-            }
-        }
-
-
-        // If we're not getting help, run the command.
-        if ( cmd.require_portal && portal == null )
-            help = true;
-
-        String usage = null;
-
-        if ( ! help ) {
-            try {
-                cmd.run(sender, null, block, portal, args);
-            } catch(ABCommand.NeedsHelp ex) {
-                help = true;
-                final String msg = ex.getMessage();
-                if ( msg != null && msg.length() > 0 )
-                    usage = msg;
-            }
-        }
-
-        // If we need help, display it.
-        if ( help ) {
-            ColorBuilder out = t(sender instanceof Player ? "/" : "").append(label).append(" ");
-
-            if ( label.equals("abyss") )
-                out.append(cmdkey).append(" ");
-
-            if ( usage != null )
-                out.append(usage);
-            else
-                out.append(cmd.usage != null ? cmd.usage : (cmd.require_portal ? "[@block|@player|portal]" : "<@block|@player|portal>"));
-
-            out.send(sender);
-        }
-
-        return true;
+        // Use the command executor.
+        return cmd.onCommand(sender, command, label, args);
     }
 
 
@@ -1077,6 +987,8 @@ public final class AbyssPlugin extends JavaPlugin {
             final ColorBuilder cb = t();
             if ( portal.destination != 0 )
                 cb.red("The destination is unreachable.");
+            else if ( limitDistance )
+                cb.red("No valid destinations within range.");
             else
                 cb.red("No valid destinations.");
             cb.send((Player) entity);
