@@ -1112,6 +1112,9 @@ public final class AbyssPlugin extends JavaPlugin {
             final int rotation = to.getRotation().ordinal() - from_rot.ordinal();
             final int opposite_rot = (rotation >= 0) ? (rotation + 2) % 4 : (rotation - 2) % 4;
 
+            // Useful for later flipping!
+            boolean x_major = Math.abs(delta.getX()) > Math.abs(delta.getZ());
+
             if ( opposite_rot != 0 ) {
                 // Apply the rotation to the destination rotation.
                 dest.setYaw(dest.getYaw() + (opposite_rot * 90));
@@ -1143,11 +1146,6 @@ public final class AbyssPlugin extends JavaPlugin {
             // Apply the rotation to the offset.
             double off_x = offset.getX(), off_z = offset.getZ();
 
-            if ( from_rot == Rotation.CLOCKWISE || from_rot == Rotation.COUNTER_CLOCKWISE )
-                off_z = -off_z;
-            else
-                off_x = -off_x;
-
             if ( rotation != 0 ) {
                 final double rads = Math.toRadians(rotation * 90);
                 final double c = Math.cos(rads), s = Math.sin(rads);
@@ -1155,10 +1153,18 @@ public final class AbyssPlugin extends JavaPlugin {
                 offset.setX(off_x * c - off_z * s);
                 offset.setZ(off_x * s + off_z * c);
 
-            } else {
-                offset.setX(off_x);
-                offset.setZ(off_z);
+                off_x = offset.getX();
+                off_z = offset.getZ();
             }
+
+            // Flip the offset.
+            if ( rotation == 0 || rotation == 2 || rotation == -2 )
+                x_major = ! x_major;
+
+            if ( x_major )
+                offset.setX(-off_x);
+            else
+                offset.setZ(-off_z);
 
             // Apply the offset to the destination coordinates, and add a slight
             // height to make things work better.
@@ -1352,9 +1358,11 @@ public final class AbyssPlugin extends JavaPlugin {
         }
 
         // Set cooldown information.
-        final UUID eid = entity.getUniqueId();
-        entityLastPortal.put(eid, to.uid);
-        entityLastTime.put(eid, entity.getWorld().getFullTime() + cooldownTicks);
+        if ( cooldownTicks > 0 ) {
+            final UUID eid = entity.getUniqueId();
+            entityLastPortal.put(eid, to.uid);
+            entityLastTime.put(eid, entity.getWorld().getFullTime() + cooldownTicks);
+        }
 
         // Return the destination.
         return entity;

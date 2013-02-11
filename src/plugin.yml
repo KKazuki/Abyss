@@ -1,5 +1,5 @@
 name: Abyss
-version: 2
+version: 3
 description: A water-based portal system for players.
 author: Stendec <me@stendec.me>
 
@@ -8,7 +8,7 @@ softdepend: [WorldGuard, Vault]
 
 commands:
     abyss:
-        description: Something something.
+        description: The main command for all Abyss commands.
         usage: /<command> [subcommand]
         permission: abyss.command.base
 
@@ -38,6 +38,9 @@ permissions:
         default: op
     abyss.modifiers.compass:
         description: Allows you to use the Compass portal modifier.
+        default: op
+    abyss.modifiers.emerald_block:
+        description: Allows you to use the Emerald Block modifier.
         default: op
 
 

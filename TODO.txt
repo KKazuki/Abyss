@@ -30,11 +30,20 @@ DONE	Static Portal Effect
 	    that people can put more than one rail line directly
 	    next to each other.
 
+	Multi-World Configuration
+	  - Make it possible to tweak costs for travel between worlds.
+	  - Configuration to select which worlds can be travelled between.
+	  - Hook Multi-world for relative world size? (Like the Nether)
+
 
 Portal Modifiers
 1.5	Dropper - Drop Items (Combine code with Dispenser)
 	Emerald (Block?) - Economy Interaction with Vault
 1.5	Hopper - Take Item(s) from Entities
+
+	Virtual Inventory
+	  - Make it possible to use virtual inventories for dispensers
+	    and other similar modifiers?
 
 
 Portal Tools

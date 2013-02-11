@@ -135,7 +135,10 @@ public class ABPortal implements Comparable<ABPortal> {
         } catch(IllegalArgumentException ex) { rotation = Rotation.NONE; }
 
         location = loadLocation(config.getConfigurationSection("location"));
-        center = location.clone().add(size / 2, 0, size / 2);
+
+        final double half = (double) size / 2;
+
+        center = location.clone().add(half, 0, half);
         minimum = location.clone().subtract(1, depth, 1);
         maximum = location.clone().add(size, 2, size);
 
@@ -635,7 +638,11 @@ public class ABPortal implements Comparable<ABPortal> {
 
         location = loc;
         size = sz;
-        center = location.clone().add(size / 2, 0, size / 2);
+
+        // We need precision for this.
+        double half = (double) size / 2;
+
+        center = location.clone().add(half, 0, half);
         minimum = location.clone().subtract(1, depth, 1);
         maximum = location.clone().add(size, 2, size);
 

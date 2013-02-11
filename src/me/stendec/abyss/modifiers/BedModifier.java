@@ -34,7 +34,7 @@ public class BedModifier extends PortalModifier {
             loc.add(0, 1, 0);
 
         if (!canSpawnAt(loc))
-            throw new IllegalArgumentException("Please set a valid spawn location for this modifier before setting it.");
+            throw new IllegalArgumentException("Please set the Utility Block for this modifier to a valid spawn location before setting it.");
 
         if ( !info.location.equals(loc) && !info.flags.containsKey("*moved") ) {
             info.flags.put("*moved", String.format("%f;%f;%f", info.location.getX(), info.location.getY(), info.location.getZ()));
