@@ -4,11 +4,10 @@ import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import org.bukkit.ChatColor;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -43,7 +42,7 @@ public class TeleportCommand extends ABCommand {
         return out;
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         Player player = (sender instanceof Player) ? (Player) sender : null;
 
         if ( args.size() > 0 ) {

@@ -6,7 +6,7 @@ import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.PortalManager;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 
 import java.util.ArrayList;
 
@@ -21,7 +21,7 @@ public class ReloadCommand extends ABCommand {
         description = "Reload Abyss's configuration from file.";
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         // First, save out the current portals.
         plugin.savePortals();
 

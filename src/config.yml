@@ -1,6 +1,7 @@
 # Portal Wand Configuration
 wand-name: Portal Wand
 wand-material: STICK
+wand-range: 256
 
 
 # Default Network Configuration

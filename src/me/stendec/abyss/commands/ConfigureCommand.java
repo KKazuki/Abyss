@@ -11,9 +11,8 @@ import org.bukkit.DyeColor;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -31,7 +30,7 @@ public class ConfigureCommand extends ABCommand {
         description = "Apply the given configuration to the targeted portal.";
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
             return false;

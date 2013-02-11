@@ -6,17 +6,15 @@ import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import org.apache.commons.lang.WordUtils;
-import org.bukkit.ChatColor;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.permissions.Permission;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -66,7 +64,7 @@ public class WandCommand extends ABCommand {
     }
 
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         // First, try for the optional use count.
         String arg = args.remove(0);
         int uses = 0;

@@ -12,7 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
@@ -29,7 +29,7 @@ public class InfoCommand extends ABCommand {
         description = "Display information about the targeted portal.";
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
             return false;
@@ -73,41 +73,54 @@ public class InfoCommand extends ABCommand {
         // Modifiers
         t().gray().bold("Modifiers").send(sender);
 
-        boolean had_mods = false;
+        boolean has_mods = false;
 
-        if ( portal.mods != null )
-            for(final ModInfo info: portal.mods) {
-                if ( info.item == null || info.item.getType() == Material.AIR )
-                    continue;
-
-                final ColorBuilder out = t("  ").white(ParseUtils.prettyName(info.item.getType()));
-                if ( !info.flags.isEmpty() ) {
-                    final ColorBuilder c = new ColorBuilder();
-                    boolean first = true;
-                    for(Map.Entry<String, String> entry: info.flags.entrySet()) {
-                        final String key = entry.getKey();
-                        if ( key.charAt(0) == '*' )
-                            continue;
-
-                        if ( ! first )
-                            c.darkgray("; ");
-                        first = false;
-
-                        c.gray(key);
-                        final String value = entry.getValue();
-                        if ( value.length() > 0 )
-                            c.darkgray(": ").darkpurple(value);
-                    }
-
-                    if ( ! first )
-                        out.darkgray(" [").append(c.toString()).darkgray("]");
+        if ( portal.mods != null ) {
+            for(final ModInfo info: portal.mods)
+                if ( info.item != null && info.item.getType() != Material.AIR ) {
+                    has_mods = true;
+                    break;
                 }
 
-                had_mods = true;
-                out.send(sender);
-            }
+            if ( has_mods ) {
+                int index = -1;
+                for(final ModInfo info: portal.mods) {
+                    index++;
+                    final ColorBuilder out = t().darkgray().bold(" [%02d] ", index);
 
-        if ( ! had_mods )
+                    if ( info.item == null || info.item.getType() == Material.AIR )
+                        out.darkgray("None");
+                    else
+                        out.white(ParseUtils.prettyName(info.item.getType()));
+
+                    if ( !info.flags.isEmpty() ) {
+                        final ColorBuilder c = new ColorBuilder();
+                        boolean first = true;
+                        for(Map.Entry<String, String> entry: info.flags.entrySet()) {
+                            final String key = entry.getKey();
+                            if ( key.charAt(0) == '*' )
+                                continue;
+
+                            if ( ! first )
+                                c.darkgray("; ");
+                            first = false;
+
+                            c.gray(key);
+                            final String value = entry.getValue();
+                            if ( value.length() > 0 )
+                                c.darkgray(": ").darkpurple(value);
+                        }
+
+                        if ( ! first )
+                            out.darkgray(" [").append(c.toString()).darkgray("]");
+                    }
+
+                    out.send(sender);
+                }
+            }
+        }
+
+        if ( ! has_mods )
             t().darkgray("  None").send(sender);
 
         return true;

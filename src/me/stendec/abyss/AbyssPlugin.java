@@ -54,6 +54,7 @@ public final class AbyssPlugin extends JavaPlugin {
     // Portal Wand Configuration
     public Material wandMaterial;
     public String wandName;
+    public int wandRange;
 
     // Default Network Configuration
     public ItemStack defaultNetwork;
@@ -261,6 +262,7 @@ public final class AbyssPlugin extends JavaPlugin {
         // Portal Wand Configuration
         config.set("wand-name", wandName);
         config.set("wand-material", wandMaterial.name());
+        config.set("wand-range", wandRange);
 
         // Network Configuration
         config.set("network-material", String.format("%s:%d", defaultNetwork.getType().name(), defaultNetwork.getDurability()));
@@ -360,7 +362,8 @@ public final class AbyssPlugin extends JavaPlugin {
 
 
         // Portal Wand
-        wandName = config.getString("wand-name");
+        wandName = config.getString("wand-name", "Portal Wand");
+        wandRange = config.getInt("wand-range", 256);
 
         String string = config.getString("wand-material");
         wandMaterial = Material.matchMaterial(string);

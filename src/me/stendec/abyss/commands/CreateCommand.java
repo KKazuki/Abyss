@@ -1,7 +1,6 @@
 package me.stendec.abyss.commands;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
@@ -15,11 +14,10 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-import javax.annotation.concurrent.Immutable;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 public class CreateCommand extends ABCommand {
@@ -31,10 +29,9 @@ public class CreateCommand extends ABCommand {
         require_block = true;
 
         description = "Create a new portal at the targeted block.";
-
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         // If we don't have a block, abort.
         if ( target == null ) {
             t().red("You must specify a target block.").send(sender);
@@ -137,7 +134,7 @@ public class CreateCommand extends ABCommand {
         }
 
         if ( rot == null ) {
-            BlockFace facing = (event != null && event.hasBlock()) ? event.getBlockFace().getOppositeFace() : null;
+            BlockFace facing = (event != null && event instanceof PlayerInteractEvent && ((PlayerInteractEvent) event).hasBlock()) ? ((PlayerInteractEvent) event).getBlockFace().getOppositeFace() : null;
             if ( sender instanceof Player && (facing == null || facing == BlockFace.UP || facing == BlockFace.DOWN || facing == BlockFace.SELF))
                 facing = EntityUtils.getFacing((Player) sender);
 

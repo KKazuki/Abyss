@@ -1,5 +1,6 @@
 package me.stendec.abyss.listeners;
 
+import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.FrameInfo;
@@ -27,30 +28,35 @@ public class ItemListener implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Utilities
+    ///////////////////////////////////////////////////////////////////////////
+
     private static ColorBuilder t() {
         return new ColorBuilder();
     }
 
-    private static ColorBuilder t(final String string) {
-        return new ColorBuilder(string);
-    }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Hanging Events
+    ///////////////////////////////////////////////////////////////////////////
 
     @EventHandler(priority =  EventPriority.LOW)
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
         Hanging entity = event.getEntity();
-        if (! (entity instanceof ItemFrame) )
+        if ( ! (entity instanceof ItemFrame) )
             return;
 
-        // If there's no portal, we don't care.
-        final ABPortal portal = plugin.getManager().getByFrame((ItemFrame) entity);
+        // Try getting the portal for this frame.
+        final ABPortal portal = plugin.getManager().getByFrame(entity);
         if (portal == null)
             return;
 
         // It is our event.
         event.setCancelled(true);
 
-        // If the remover isn't a player, we don't care.
+        // If the remover isn't a player, we don't care further.
         Entity remover = event.getRemover();
         if (!(remover instanceof Player))
             return;
@@ -64,14 +70,16 @@ public class ItemListener implements Listener {
             return;
         }
 
-        final ItemStack i = player.getItemInHand();
-        final Material m = i.getType();
-        DyeColor color = null;
-        if ( m == Material.WOOL )
-            color = ((Wool) i.getData()).getColor();
-        else if ( m == Material.INK_SACK )
-            color = ((Dye) i.getData()).getColor();
+        final ItemStack item = player.getItemInHand();
+        final Material m = item.getType();
 
+        // Get a color, for use with color, ID, and Destination frames.
+        DyeColor color = null;
+
+        if (item.getType() == Material.WOOL)
+            color = ((Wool) item.getData()).getColor();
+        else if (item.getType() == Material.INK_SACK)
+            color = ((Dye) item.getData()).getColor();
 
         try {
             if ( info.type == FrameInfo.Frame.NETWORK) {
@@ -148,8 +156,8 @@ public class ItemListener implements Listener {
                     portal.setPartialDestination(0, false);
             }
         } catch(IllegalArgumentException ex) {
-            t().red("Error Configuring Portal").lf().
-                gray("    ").append(ex.getMessage()).send(player);
+            t().red("Error Configuring Portal").send(player);
+            t().gray("    ").append(ex.getMessage()).send(player);
         }
     }
 

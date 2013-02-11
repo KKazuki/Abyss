@@ -3,6 +3,7 @@ package me.stendec.abyss.listeners;
 import com.google.common.base.Joiner;
 import me.stendec.abyss.*;
 import me.stendec.abyss.util.ColorBuilder;
+import me.stendec.abyss.util.EntityUtils;
 import me.stendec.abyss.util.ParseUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -41,29 +42,6 @@ public class PlayerListener implements Listener {
         return new ColorBuilder();
     }
 
-    private static ColorBuilder t(final String string) {
-        return new ColorBuilder(string);
-    }
-
-
-    private static HashSet<Byte> transparentMaterials;
-
-    static {
-        transparentMaterials = new HashSet<Byte>();
-        transparentMaterials.add((byte) Material.AIR.getId());
-        transparentMaterials.add((byte) Material.STONE_BUTTON.getId());
-        transparentMaterials.add((byte) Material.WOOD_BUTTON.getId());
-    }
-
-    private Block getLiquid(Player player) {
-        for(Block b: player.getLineOfSight(transparentMaterials, 6)) {
-            if (AbyssPlugin.validLiquid(b))
-                return b;
-        }
-        return null;
-    }
-
-
     ///////////////////////////////////////////////////////////////////////////
     // Portal Use
     ///////////////////////////////////////////////////////////////////////////
@@ -73,7 +51,7 @@ public class PlayerListener implements Listener {
         final Player player = event.getPlayer();
 
         // Don't handle a sneaking player, or a player with no permissions.
-        if (player.isSneaking() || !player.hasPermission("abyss.use"))
+        if ( player.isSneaking() || !player.hasPermission("abyss.use") )
             return;
 
         // Do portal logic.
@@ -152,8 +130,8 @@ public class PlayerListener implements Listener {
         final Player player = event.getPlayer();
         final Entity entity = event.getRightClicked();
 
-        // Only handle clicks on item frames by players with the use permission.
-        if (!(entity instanceof ItemFrame) || !player.hasPermission("abyss.use"))
+        // Only handle clicks on item frames.
+        if ( ! (entity instanceof ItemFrame) )
             return;
 
         final ItemFrame frame = (ItemFrame) entity;
@@ -180,6 +158,19 @@ public class PlayerListener implements Listener {
         final ItemStack item = player.getItemInHand();
         final Material material = item.getType();
 
+        // Check for a Portal Wand.
+        final String tool = plugin.validatePortalWand(item);
+        if ( tool != null ) {
+            ABCommand cmd = plugin.commands.get(tool);
+            if ( cmd == null ) {
+                t().red("Unknown Command: ").reset(tool).send(player);
+                return;
+            }
+
+            cmd.useWand(player, item, event, entity.getLocation().getBlock(), portal);
+            return;
+        }
+
         // Get a color, for use with color, ID, and Destination frames.
         DyeColor color = null;
 
@@ -187,15 +178,6 @@ public class PlayerListener implements Listener {
             color = ((Wool) item.getData()).getColor();
         else if (item.getType() == Material.INK_SACK)
             color = ((Dye) item.getData()).getColor();
-
-
-        // Check for the Modifier wand.
-        final String tool = plugin.validatePortalWand(item);
-        final boolean mtool = tool != null && tool.equals("modifier");
-        if (mtool && info.type != FrameInfo.Frame.MOD) {
-            t().red("You must click a modifier frame to use the modifier wand.").send(player);
-            return;
-        }
 
         try {
             if ( info.type == FrameInfo.Frame.NETWORK) {
@@ -211,101 +193,6 @@ public class PlayerListener implements Listener {
             } else if (info.type == FrameInfo.Frame.MOD) {
                 if ( material == Material.AIR )
                     return;
-
-                if ( mtool ) {
-                    if (frame.getItem().getType() == Material.AIR)
-                        throw new IllegalArgumentException("Cannot configure empty modifier.");
-
-                    // Get the ModInfo instance for this modifier.
-                    final ModInfo minfo = portal.getModFromFrame(frame);
-                    if ( minfo == null )
-                        throw new IllegalArgumentException("Error getting modifier information.");
-
-                    if ( ! item.getItemMeta().hasLore() )
-                        throw new IllegalArgumentException("This modifier wand has no configuration to apply.");
-
-                    List<String> lore = item.getItemMeta().getLore();
-                    ArrayList<String> args = new ArrayList<String>();
-                    int uses = 0;
-
-                    if ( lore != null )
-                        for(final String l: lore) {
-                            final String plain = ChatColor.stripColor(l).toLowerCase();
-                            if ( plain.startsWith("remaining uses: ") ) {
-                                try {
-                                    uses = Integer.parseInt(plain.substring(16));
-                                } catch(NumberFormatException ex) {
-                                    t().red("Invalid Remaining Use Count: ").reset(plain).send(player);
-                                    return;
-                                }
-                            } else {
-                                // Do a stupid space split, since that's what Bukkit does.
-                                args.addAll(Arrays.asList(l.split("\\s")));
-                            }
-                        }
-
-                    // Remove empty strings.
-                    for(Iterator<String> it = args.iterator(); it.hasNext(); )
-                        if ( it.next().trim().length() == 0 )
-                            it.remove();
-
-                    Map<String, String> config = ParseUtils.tokenize(Joiner.on(" ").skipNulls().join(args).trim());
-                    if (config != null && config.size() > 0)
-                        for(final Map.Entry<String,String> entry: config.entrySet()) {
-                            String key = entry.getKey();
-                            if ( key.startsWith("-") ) {
-                                key = key.substring(1);
-                                if (minfo.flags.containsKey(key))
-                                    minfo.flags.remove(key);
-                            } else {
-                                minfo.flags.put(key, entry.getValue());
-                            }
-                        }
-
-                    // Since it was a success, decrement the uses for our wand.
-                    if ( uses > 0 && player.getGameMode() != GameMode.CREATIVE ) {
-                        ItemStack rest = null;
-
-                        if ( uses > 1 ) {
-                            // If it's part of a stack, we'll want to split it up here.
-                            if ( item.getAmount() > 1 ) {
-                                rest = item.clone();
-                                rest.setAmount(item.getAmount() - 1);
-
-                                item.setAmount(1);
-                            }
-
-                            for(int i=0; i < lore.size(); i++) {
-                                String l = lore.get(i);
-                                final String plain = ChatColor.stripColor(l).toLowerCase();
-                                if ( ! plain.startsWith("remaining uses: ") )
-                                    continue;
-
-                                // Replace the uses remaining. Try to preserve color codes.
-                                lore.set(i, l.replace(plain.substring(16), Integer.toString(uses - 1)));
-                            }
-
-                            // Apply the new lore.
-                            final ItemMeta im = item.getItemMeta();
-                            im.setLore(lore);
-                            item.setItemMeta(im);
-
-                        } else if ( uses == 1 ) {
-                            // Destroy the wand.
-                            player.setItemInHand(null);
-                        }
-
-                        // If we've got extra items, add them.
-                        if ( rest != null ) {
-                            for(final ItemStack dnf: player.getInventory().addItem(rest).values())
-                                player.getWorld().dropItemNaturally(player.getLocation(), dnf);
-                            player.updateInventory();
-                        }
-                    }
-
-                    portal.getDisplayName().darkgreen("'s modifier was updated successfully.").send(player);
-                    return;
-                }
 
                 // If the frame already has an item, abort.
                 if (frame.getItem().getType() != Material.AIR) {
@@ -351,7 +238,7 @@ public class PlayerListener implements Listener {
             }
         } catch(IllegalArgumentException ex) {
             t().red("Error Configuring Portal").send(player);
-            t("    ").gray(ex.getMessage()).send(player);
+            t().append("   ").gray(ex.getMessage()).send(player);
         }
 
     }
@@ -360,17 +247,17 @@ public class PlayerListener implements Listener {
     // Portal Tool
     ///////////////////////////////////////////////////////////////////////////
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Action action = event.getAction();
         if (action != Action.RIGHT_CLICK_BLOCK && action != Action.RIGHT_CLICK_AIR)
             return;
 
         Player player = event.getPlayer();
-        ItemStack item = event.getItem();
+        ItemStack wand = event.getItem();
 
         // See if we've got a portal wand.
-        String tool = plugin.validatePortalWand(item);
+        String tool = plugin.validatePortalWand(wand);
         if (tool == null)
             return;
 
@@ -380,153 +267,19 @@ public class PlayerListener implements Listener {
         // Try to find the command.
         ABCommand cmd = plugin.commands.get(tool);
         if ( cmd == null ) {
-            final ArrayList<String> possible = new ArrayList<String>();
-            for(final String key: plugin.commands.keySet())
-                if ( key.startsWith(tool) )
-                    possible.add(key);
-
-            if ( possible.size() > 0 ) {
-                // We've got a command, so use it.
-                Collections.sort(possible);
-                tool = possible.get(0);
-                cmd = plugin.commands.get(tool);
-            }
-        }
-
-        if ( cmd == null ) {
-            t().red("Unknown Tool: ").reset(tool).send(player);
-            return;
-        }
-
-        // Make sure the player has permission to use this tool.
-        final PluginManager pm = plugin.getServer().getPluginManager();
-        final Permission perm = pm.getPermission("abyss.wand." + tool);
-        if ( perm != null && !player.hasPermission(perm) ) {
-            t().red("Permission Denied").send(player);
+            t().red("Unknown Command: ").reset(tool).send(player);
             return;
         }
 
         // Get the block involved.
         Block block = event.getClickedBlock();
         if ( block == null )
-            block = getLiquid(player);
+            block = player.getTargetBlock(EntityUtils.transparentBytes, plugin.wandRange);
         else
             block = block.getRelative(event.getBlockFace());
 
-        // Get the lore, and check for a usage count and arguments.
-        ArrayList<String> args = new ArrayList<String>();
-        List<String> lore = item.getItemMeta().getLore();
-        int uses = 0;
-
-        if ( lore != null )
-            for(final String l: lore) {
-                final String plain = ChatColor.stripColor(l).toLowerCase();
-                if ( plain.startsWith("remaining uses: ") ) {
-                    try {
-                        uses = Integer.parseInt(plain.substring(16));
-                    } catch(NumberFormatException ex) {
-                        t().red("Invalid Remaining Use Count: ").reset(plain).send(player);
-                        return;
-                    }
-                } else {
-                    // Do a stupid space split, since that's what Bukkit does.
-                    args.addAll(Arrays.asList(l.split("\\s")));
-                }
-            }
-
-        // Remove empty strings.
-        for(Iterator<String> it = args.iterator(); it.hasNext(); )
-            if ( it.next().trim().length() == 0 )
-                it.remove();
-
-        // If the command needs a portal, try finding one.
-        ABPortal portal = plugin.getManager().getAt(block);
-        if ( cmd.require_portal && portal == null ) {
-            // Try getting a portal from the arguments.
-            if ( args.size() > 0 ) {
-                final String key = args.remove(0);
-                if ( key.length() > 0 && key.charAt(0) == '@' ) {
-                    Location loc = null;
-
-                    // First, try getting a player with that name.
-                    Player p = plugin.getServer().getPlayer(key.substring(1));
-                    if ( p != null )
-                        loc = player.getLocation();
-
-                    if ( loc == null && key.contains(",") )
-                        loc = ParseUtils.matchLocation(key.substring(1), player.getWorld());
-
-                    // Try using this location as a portal.
-                    portal = plugin.getManager().getAt(loc);
-                }
-
-                if ( portal == null ) {
-                    try {
-                        portal = plugin.getManager().getById(UUID.fromString(key));
-                    } catch(IllegalArgumentException ex) { }
-                }
-
-                if ( portal == null )
-                    portal = plugin.getManager().getByName(key);
-            }
-
-            if ( portal == null ) {
-                t().red("No portal detected.").send(player);
-                return;
-            }
-        }
-
-        // Now, run the command. If not successful, stop now.
-        boolean passed = false;
-        try {
-            passed = cmd.run(player, event, block, portal, args);
-        } catch(ABCommand.NeedsHelp ex) {
-            return;
-        }
-
-        if ( ! passed )
-            return;
-
-        // Since it was a success, decrement the uses for our wand.
-        if ( uses > 0 && player.getGameMode() != GameMode.CREATIVE ) {
-            ItemStack rest = null;
-
-            if ( uses > 1 ) {
-                // If it's part of a stack, we'll want to split it up here.
-                if ( item.getAmount() > 1 ) {
-                    rest = item.clone();
-                    rest.setAmount(item.getAmount() - 1);
-
-                    item.setAmount(1);
-                }
-
-                for(int i=0; i < lore.size(); i++) {
-                    String l = lore.get(i);
-                    final String plain = ChatColor.stripColor(l).toLowerCase();
-                    if ( ! plain.startsWith("remaining uses: ") )
-                        continue;
-
-                    // Replace the uses remaining. Try to preserve color codes.
-                    lore.set(i, l.replace(plain.substring(16), Integer.toString(uses - 1)));
-                }
-
-                // Apply the new lore.
-                final ItemMeta im = item.getItemMeta();
-                im.setLore(lore);
-                item.setItemMeta(im);
-
-            } else if ( uses == 1 ) {
-                // Destroy the wand.
-                player.setItemInHand(null);
-            }
-
-            // If we've got extra items, add them.
-            if ( rest != null ) {
-                for(final ItemStack dnf: player.getInventory().addItem(rest).values())
-                    player.getWorld().dropItemNaturally(player.getLocation(), dnf);
-                player.updateInventory();
-            }
-        }
+        // Finally, perform the command.
+        cmd.useWand(player, wand, event, block, plugin.getManager().getAt(block));
     }
 
 }

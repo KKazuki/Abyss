@@ -278,7 +278,8 @@ public class ABPortal implements Comparable<ABPortal> {
     // Permissions
 
     public boolean canManipulate(Player player) {
-        return ( player.getName().equalsIgnoreCase(owner) || player.hasPermission("abyss.moderate") );
+        return player.hasPermission("abyss.use") &&
+                ( player.getName().equalsIgnoreCase(owner) || player.hasPermission("abyss.moderate") );
     }
 
     // Name

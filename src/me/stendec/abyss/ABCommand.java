@@ -1,19 +1,22 @@
 package me.stendec.abyss;
 
+import com.sun.xml.internal.fastinfoset.util.CharArrayString;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.EntityUtils;
 import me.stendec.abyss.util.ParseUtils;
 import org.apache.commons.lang.StringUtils;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
+import org.bukkit.event.player.PlayerEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.permissions.Permission;
+import org.bukkit.plugin.PluginManager;
 
 import java.util.*;
 
@@ -99,7 +102,7 @@ public abstract class ABCommand implements TabExecutor {
             else
                 player = getPlayer(key.substring(1));
 
-            return player.getTargetBlock(EntityUtils.transparentBytes, 100);
+            return player.getTargetBlock(EntityUtils.transparentBytes, plugin.wandRange);
         }
 
         throw new IllegalArgumentException(t().red("Invalid block location: ").reset(key).toString());
@@ -140,6 +143,159 @@ public abstract class ABCommand implements TabExecutor {
         return portal;
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Wand Use
+    ///////////////////////////////////////////////////////////////////////////
+
+    public boolean canUse(final CommandSender sender, final boolean wand) {
+        final PluginManager pm = plugin.getServer().getPluginManager();
+        final Permission perm = pm.getPermission("abyss." + (wand ? "wand." : "command.") + name);
+        return perm == null || sender.hasPermission(perm);
+    }
+
+    public boolean useWand(final Player player, final ItemStack wand, final Event event, Block block, ABPortal portal) {
+        // Make sure the player has permission to use this tool.
+        if ( ! canUse(player, true) ) {
+            t().red("Permission Denied").send(player);
+            return false;
+        }
+
+        // Get the lore, and check for usage count and arguments.
+        ArrayList<String> args = new ArrayList<String>();
+        List<String> lore = wand.getItemMeta().getLore();
+        int uses = 0;
+
+        if ( lore != null )
+            for(final String l: lore) {
+                final String plain = ChatColor.stripColor(l).toLowerCase();
+                if ( plain.startsWith("remaining uses: ") ) {
+                    try {
+                        uses = Integer.parseInt(plain.substring(16));
+                    } catch(NumberFormatException ex) {
+                        t().red("Invalid Remaining Use count: ").reset(plain).send(player);
+                        return false;
+                    }
+                } else {
+                    // Do a stupid space split, since that's what Bukkit does for commands.
+                    args.addAll(Arrays.asList(l.split("\\s")));
+                }
+            }
+
+        // Remove empty strings.
+        for(Iterator<String> it = args.iterator(); it.hasNext(); )
+            if ( it.next().trim().length() == 0 )
+                it.remove();
+
+        // If we don't have a portal, fix that.
+        if ( require_portal && portal == null ) {
+            // Try getting a portal from the arguments.
+            if ( args.size() > 0 ) {
+                final String arg = args.remove(0);
+                try {
+                    portal = parsePortal(player, arg);
+                } catch(IllegalArgumentException ex) {
+                    player.sendMessage(ex.getMessage());
+                    return false;
+                }
+
+                block = portal.getLocation().getBlock();
+            }
+
+            if ( portal == null ) {
+                t().red("No portal detected.").send(player);
+                return false;
+            }
+        }
+
+        if ( block == null && ( try_block || require_block ) ) {
+            if ( args.size() > 0 ) {
+                final String arg = args.remove(0);
+                try {
+                    block = parseBlock(player, arg);
+                } catch(IllegalArgumentException ex) {
+                    if ( require_block ) {
+                        player.sendMessage(ex.getMessage());
+                        return true;
+                    }
+
+                    // It's not a block, so put it back.
+                    args.add(0, arg);
+                }
+
+                // Try getting the portal if we can.
+                if ( portal == null && block != null )
+                    portal = plugin.getManager().getAt(block);
+            }
+        }
+
+        if ( minimumArguments > args.size() ) {
+            t().red("Not enough arguments.").send(player);
+            return false;
+        } else if ( maximumArguments != -1 && args.size() > maximumArguments ) {
+            t().red("Too many arguments.").send(player);
+            return false;
+        }
+
+        // Try running the command.
+        boolean passed = false;
+        try {
+            passed = run(player, event, block, portal, args);
+        } catch(NeedsHelp ex) {
+            return false;
+        }
+
+        if ( ! passed )
+            return false;
+
+        // Since it was a success, decrement the wand's uses.
+        if ( uses > 0 && player.getGameMode() != GameMode.CREATIVE ) {
+            ItemStack rest = null;
+
+            // If it's part of a stack, we'll want to split it up here.
+            if ( wand.getAmount() > 1 ) {
+                rest = wand.clone();
+                rest.setAmount(wand.getAmount() - 1);
+
+                wand.setAmount(1);
+            }
+
+            if ( uses > 1 ) {
+                for(int i=0; i < lore.size(); i++) {
+                    String l = lore.get(i);
+                    final String plain = ChatColor.stripColor(l).toLowerCase();
+                    if ( ! plain.startsWith("remaining uses: ") )
+                        continue;
+
+                    // Replace the uses remaining. Try to preserve color codes.
+                    lore.set(i, l.replace(plain.substring(16), Integer.toString(uses - 1)));
+                }
+
+                // Apply the new lore.
+                final ItemMeta im = wand.getItemMeta();
+                im.setLore(lore);
+                wand.setItemMeta(im);
+
+            } else if ( uses == 1 ) {
+                // Destroy the wand.
+                player.setItemInHand(null);
+            }
+
+            // If we've got extra items, add them.
+            if ( rest != null ) {
+                for(final ItemStack dnf: player.getInventory().addItem(rest).values())
+                    player.getWorld().dropItemNaturally(player.getLocation(), dnf);
+                player.updateInventory();
+            }
+
+        }
+
+        return true;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Command Execution
+    ///////////////////////////////////////////////////////////////////////////
 
     public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] arguments) {
         // Convert the arguments to a list.
@@ -257,7 +413,7 @@ public abstract class ABCommand implements TabExecutor {
 
         if ( require_portal || require_block || try_block ) {
             out.append((require_portal || require_block) ? " [" : " <");
-            out.append(isPlayer ? "@x,y,z|": "").append("@x,y,z,world|");
+            out.append(isPlayer ? "@x,y,z|" : "").append("@x,y,z,world|");
             out.append(isPlayer ? "+|+player|*|*player" : "+player|*player");
 
             if ( require_portal )
@@ -286,6 +442,10 @@ public abstract class ABCommand implements TabExecutor {
         out.sendByLine(sender);
         return true;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Tab Completion
+    ///////////////////////////////////////////////////////////////////////////
 
     public List<String> onTabComplete(final CommandSender sender, final Command command, final String label, final String[] arguments) {
         // Convert the arguments to a list.
@@ -474,7 +634,7 @@ public abstract class ABCommand implements TabExecutor {
     // The Proper API
     ///////////////////////////////////////////////////////////////////////////
 
-    public abstract boolean run(CommandSender sender, PlayerInteractEvent event, Block target, ABPortal portal, ArrayList<String> args) throws NeedsHelp;
+    public abstract boolean run(CommandSender sender, Event event, Block target, ABPortal portal, ArrayList<String> args) throws NeedsHelp;
 
     public List<String> complete(CommandSender sender, Block target, ABPortal portal, List<String> args) {
         return null;

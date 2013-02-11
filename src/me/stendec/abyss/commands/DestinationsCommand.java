@@ -8,7 +8,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 
 import java.util.ArrayList;
 
@@ -24,7 +24,7 @@ public class DestinationsCommand extends ABCommand {
         description = "List all the targeted portal's potential destinations.";
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws ABCommand.NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, ABPortal portal, final ArrayList<String> args) throws ABCommand.NeedsHelp {
         if ( (sender instanceof Player) && !portal.canManipulate((Player) sender) ) {
             t().red("Permission Denied").send(sender);
             return false;
@@ -61,7 +61,7 @@ public class DestinationsCommand extends ABCommand {
         }
 
         String[] output = out.toString().split("\n");
-        output[0] = t().gold().bold("-- ").yellow().bold("Destinations").gold().bold(" --").toString();
+        output[0] = t().gold().bold("-- ").yellow().bold("Destinations of ").append(portal.getDisplayName(true)).gold().bold(" --").toString();
         sender.sendMessage(output);
         return true;
     }

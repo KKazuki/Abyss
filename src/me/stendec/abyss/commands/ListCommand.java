@@ -4,11 +4,12 @@ import com.google.common.collect.ImmutableList;
 import me.stendec.abyss.*;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
+import org.apache.commons.lang.StringUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -87,7 +88,7 @@ public class ListCommand extends ABCommand {
         return null;
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+    public boolean run(final CommandSender sender, final Event event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         // See if we've got a network to iterate.
         String owner = (portal != null) ? portal.owner : null;
         ItemStack network = (portal != null) ? portal.network : null;
@@ -138,12 +139,15 @@ public class ListCommand extends ABCommand {
 
         // Iterate over the worlds. Store our output in a ColorBuilder for now,
         // so we can paginate later.
-        final ColorBuilder out = new ColorBuilder();
+        ColorBuilder out = new ColorBuilder();
         final PortalManager manager = plugin.getManager();
 
         final ArrayList<ABPortal> portals = new ArrayList<ABPortal>();
 
         int longest_color = 0;
+        int longest_net = 0;
+        int biggest_xz = 0;
+        int biggest_y = 0;
         int total = 0;
 
         for(Map.Entry<UUID, ABPortal> entry: manager.entrySet()) {
@@ -157,50 +161,89 @@ public class ListCommand extends ABCommand {
             else if ( color != null && color != p.color )
                 continue;
 
+            String nw = ParseUtils.prettyName(p.network);
+            if ( p.network.getType() == Material.SKULL_ITEM && p.network.getDurability() == 3 )
+                nw = "Personal";
+            else if ( p.network.getItemMeta().hasDisplayName() )
+                nw = p.network.getItemMeta().getDisplayName() + " (" + nw + ")";
+
+            final Location center = p.getCenter();
+
+            biggest_xz = Math.max(Math.max(biggest_xz, Math.abs(center.getBlockX())), Math.abs(center.getBlockZ()));
+            biggest_y = Math.max(biggest_y, center.getBlockY());
             longest_color = Math.max(longest_color, p.color.name().length());
+            longest_net = Math.max(longest_net, nw.length());
             portals.add(p);
         }
 
         Collections.sort(portals);
 
+        biggest_xz = String.valueOf(biggest_xz).length() + 1;
+        biggest_y = String.valueOf(biggest_y).length() + 1;
+
+        final String fmt = String.format(" [%%%ds|%%-%ds] @ %%+%dd, %%+%dd, %%+%dd, %%s", longest_net, longest_color, biggest_xz, biggest_y, biggest_xz);
+
         for(final ABPortal p: portals) {
             final ItemMeta im = p.network.getItemMeta();
             String nw = ParseUtils.prettyName(p.network);
             if ( p.network.getType() == Material.SKULL_ITEM && p.network.getDurability() == 3 ) {
-                nw = t().gray("@").reset(p.owner).toString();
-                while ( nw.length() < 16 ) nw = " " + nw;
-
+                nw = "Personal";
             } else if ( im.hasDisplayName() ) {
                 nw = t(im.getDisplayName()).gray(" (").reset(nw).gray(")").toString();
-                while ( nw.length() < 16 ) nw = " " + nw;
             }
 
             final Location center = p.getCenter();
-            out.lf();
             if ( p.valid )
-                out.white("+ ").append(p.getName());
+                out.white("+ ").bold(p.getName());
             else
-                out.gray("- ").white(p.getName());
+                out.darkgray("- ").white().bold(p.getName());
 
             // Display less in-game.
             if (! (sender instanceof Player) ) {
-                out.darkgray(ChatColor.RESET, " [%12s|%-" + longest_color + "s] @ %d, %d, %d [%s]",
-                        nw, ParseUtils.prettyName(p.color), center.getBlockX(),
+                // Adjust network length based on the longest length.
+                int bare = ChatColor.stripColor(nw).length();
+                if ( bare < longest_net )
+                    nw = StringUtils.repeat(" ", longest_net - bare) + nw;
+
+                out.darkgray(ChatColor.RESET, fmt, nw, ParseUtils.prettyName(p.color), center.getBlockX(),
                         center.getBlockY(), center.getBlockZ(), center.getWorld().getName());
 
             } else {
-                out.darkgray(ChatColor.RESET, ": %s [%s]", nw, ParseUtils.prettyName(p.color));
+                out.reset(" ").append(nw).darkgray(" [").reset(ParseUtils.prettyName(p.color)).darkgray("]");
             }
+
+            out.lf();
         }
 
+        // Trim the last line return.
+        out.deleteCharAt(out.length() - 1);
+
         // Update the header.
-        String[] output = out.toString().split("\n");
-        output[0] = t().gold().bold("-- ").yellow().bold("Portals").gold().bold(" -- ").
-                yellow(ChatColor.YELLOW, "%d of %d Portals", portals.size(), total).
-                gold().bold(" --").toString();
+        ColorBuilder header = t().gold().bold("-- ").yellow().bold("Portals").gold().bold(" -- ");
+        if ( owner != null )
+            header.yellow("Owner: ").white(owner).gold().bold(" --");
+
+        header.lf();
+
+        boolean added = false;
+        if ( network != null ) {
+            String nw = ParseUtils.prettyName(network);
+            if ( network.getType() == Material.SKULL_ITEM && network.getDurability() == 3 )
+                nw = "Personal";
+            header.yellow("  Network: ").white(nw);
+            added = true;
+        }
+
+        if ( color != null ) {
+            header.yellow("  Color: ").white(ParseUtils.prettyName(color));
+            added = true;
+        }
+
+        if ( added )
+            header.lf();
 
         // Send the lines to the sender.
-        sender.sendMessage(output);
+        sender.sendMessage((header.toString() + out.toString()).split("\n"));
         return true;
     }
 
