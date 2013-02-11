@@ -1,7 +1,10 @@
 package me.stendec.abyss.commands;
 
 import com.google.common.collect.ImmutableList;
-import me.stendec.abyss.*;
+import me.stendec.abyss.ABCommand;
+import me.stendec.abyss.ABPortal;
+import me.stendec.abyss.AbyssPlugin;
+import me.stendec.abyss.PortalManager;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
 import org.apache.commons.lang.StringUtils;
@@ -216,7 +219,12 @@ public class ListCommand extends ABCommand {
         }
 
         // Trim the last line return.
-        out.deleteCharAt(out.length() - 1);
+        if ( out.length() > 0 )
+            out.deleteCharAt(out.length() - 1);
+        else if ( owner != null || network != null || color != null )
+            out.darkgray("There are no portals that meet your criteria.");
+        else
+            out.darkgray("There are no portals.");
 
         // Update the header.
         ColorBuilder header = t().gold().bold("-- ").yellow().bold("Portals").gold().bold(" -- ");
