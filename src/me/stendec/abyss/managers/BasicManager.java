@@ -168,6 +168,17 @@ public class BasicManager extends PortalManager {
         return out;
     }
 
+    public ArrayList<ABPortal> getNear(final Location location, final double range) {
+        if ( location == null )
+            return null;
+
+        final Location min = location.clone().subtract(range, range, range);
+        final Location max = location.clone().add(range, range, range);
+
+        return getWithin(min, max);
+    }
+
+
     public ArrayList<ABPortal> getWithin(final Location min, final Location max) {
 
         if ( min == null || max == null )

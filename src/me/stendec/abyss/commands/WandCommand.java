@@ -1,6 +1,7 @@
 package me.stendec.abyss.commands;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
@@ -16,6 +17,8 @@ import org.bukkit.permissions.Permission;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 public class WandCommand extends ABCommand {
 
@@ -30,27 +33,44 @@ public class WandCommand extends ABCommand {
                 " given number of uses and the given arguments.";
     }
 
-    public boolean run(final CommandSender sender, final PlayerInteractEvent event, Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
-        // First, try for the optional location.
-        String arg = args.remove(0);
-        if ( arg.startsWith("@") || arg.startsWith("+") || arg.startsWith("*") ) {
+    public List<String> complete(final CommandSender sender, final Block target, final ABPortal portal, final List<String> args) {
+        // Deal with the optional use count.
+        if ( args.size() > 0 ) {
+            String arg = args.remove(0);
             try {
-                target = parseBlock(sender, arg);
-            } catch(IllegalArgumentException ex) {
-                sender.sendMessage(ex.getMessage());
-                return false;
-            }
-
-            if ( args.size() > 0 )
-                arg = args.remove(0);
-            else {
-                t().red("Not enough arguments.").send(sender);
-                return false;
+                Integer.parseInt(arg);
+            } catch(NumberFormatException ex) {
+                args.add(0, arg);
             }
         }
 
-        // Now, try for the optional use count.
+        // See if we've got a command.
+        final String cmdkey = plugin.getABCommand("abyss", args, false);
+        if ( cmdkey == null )
+            // No sub-command? Auto-complete it!
+            return ImmutableList.copyOf(plugin.commands.keySet());
+
+        // Try getting a command.
+        ABCommand cmd = plugin.commands.get(cmdkey);
+        if ( cmd == null ) {
+            List<String> out = new ArrayList<String>(plugin.commands.keySet());
+            for(final Iterator<String> it = out.iterator(); it.hasNext(); )
+                if ( ! it.next().startsWith(cmdkey) )
+                    it.remove();
+
+            return out;
+        }
+
+        // We have a command... so pass the buck to *its* auto-completer.
+        return cmd.complete(sender, target, portal, args);
+    }
+
+
+    public boolean run(final CommandSender sender, final PlayerInteractEvent event, Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
+        // First, try for the optional use count.
+        String arg = args.remove(0);
         int uses = 0;
+
         try {
             uses = Integer.parseInt(arg);
         } catch(NumberFormatException ex) {
@@ -58,31 +78,39 @@ public class WandCommand extends ABCommand {
             args.add(0, arg);
         }
 
+        // Make sure we've still got at least one argument.
+        if ( args.size() == 0 ) {
+            t().red("Not enough arguments.").send(sender);
+            return false;
+        }
+
         // Now, get the command.
-        String cmd = args.remove(0);
-        if ( plugin.aliases.containsKey(cmd) )
-            cmd = plugin.aliases.get(cmd);
-
-        if ( ! plugin.commands.containsKey(cmd) ) {
-            final ArrayList<String> possible = new ArrayList<String>();
-            for(final String key: plugin.commands.keySet())
-                if ( key.startsWith(cmd) )
-                    possible.add(key);
-
-            if ( possible.size() > 0 ) {
-                // We've got a command, so use it.
-                Collections.sort(possible);
-                cmd = possible.get(0);
-            } else {
-                t().red("No such command: ").reset(cmd).send(sender);
-                return false;
-            }
+        final String cmdkey = plugin.getABCommand("abyss", args, true);
+        final ABCommand cmd = plugin.commands.get(cmdkey);
+        if ( cmd == null ) {
+            t().red("No such command: ").reset(cmdkey).send(sender);
+            return false;
         }
 
         // See if the sender has the permission for that command.
-        Permission perm = plugin.getServer().getPluginManager().getPermission("abyss.command." + cmd);
+        Permission perm = plugin.getServer().getPluginManager().getPermission("abyss.command." + cmdkey);
         if ( perm != null && !sender.hasPermission(perm) ) {
             t().red("You cannot make a wand for a command you are not allowed to use.").send(sender);
+            return false;
+        }
+
+        // Prettify the command name.
+        final String name = WordUtils.capitalize(cmd.name.replaceAll("_", " "));
+
+        // Make sure it can be made into a wand.
+        if ( ! cmd.allow_wand ) {
+            t().red("The command ").append(cmd.color).bold(name).red(" cannot be made into a wand.").send(sender);
+            return false;
+        }
+
+        // Make sure we've got enough arguments.
+        if ( cmd.minimumArguments > args.size() ) {
+            t().red("The command ").append(cmd.color).bold(name).red(" requires at least %d arguments.", cmd.minimumArguments).send(sender);
             return false;
         }
 
@@ -90,17 +118,7 @@ public class WandCommand extends ABCommand {
         final ItemStack wand = new ItemStack(plugin.wandMaterial);
         final ItemMeta im = wand.getItemMeta();
 
-        // Wand Name
-        final ABCommand command = plugin.commands.get(cmd);
-        final String name = WordUtils.capitalize(cmd.replaceAll("_", " "));
-
-        // Make sure it can be made a wand.
-        if ( ! command.allow_wand ) {
-            t().red("The command ").append(command.color).bold(name).red(" cannot be made into a wand.").send(sender);
-            return false;
-        }
-
-        im.setDisplayName(t().white(plugin.wandName).darkgray(command.color, " [%s]", name).toString());
+        im.setDisplayName(t().white(plugin.wandName).darkgray(cmd.color, " [%s]", name).toString());
 
         if ( args.size() > 0 || uses > 0 ) {
             ArrayList<String> lore = new ArrayList<String>(2);

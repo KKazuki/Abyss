@@ -1,6 +1,9 @@
 package me.stendec.abyss.util;
 
-import org.bukkit.*;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Rotation;
+import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -13,7 +16,10 @@ import org.bukkit.material.Colorable;
 import org.bukkit.material.Directional;
 import org.bukkit.util.Vector;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 
 public class EntityUtils {
 
@@ -247,8 +253,14 @@ public class EntityUtils {
 
         // Clone the entity.
         if ( entity instanceof FallingBlock ) {
+            final FallingBlock eb = (FallingBlock) entity;
             instance = destination.getWorld().spawnFallingBlock(destination,
-                    ((FallingBlock) entity).getMaterial(), ((FallingBlock) entity).getBlockData());
+                    eb.getMaterial(), eb.getBlockData());
+
+        } else if ( entity instanceof Arrow ) {
+            instance = destination.getWorld().spawnArrow(destination,
+                    entity.getVelocity(), 0.6f, 12);
+
         } else {
             instance = destination.getWorld().spawn(destination, entity.getClass());
         }

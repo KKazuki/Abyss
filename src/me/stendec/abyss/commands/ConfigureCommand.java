@@ -46,7 +46,7 @@ public class ConfigureCommand extends ABCommand {
 
         final PortalManager manager = plugin.getManager();
 
-        // Remove the portal from networks temporarilly.
+        // Remove the portal from networks temporarily.
         final ItemStack network = portal.network;
         final String owner = portal.owner;
         final DyeColor color = portal.color;

@@ -1,6 +1,7 @@
 package me.stendec.abyss.util;
 
 import me.stendec.abyss.ABPortal;
+import org.apache.commons.lang.Validate;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.*;
 import org.bukkit.entity.EntityType;
@@ -12,6 +13,13 @@ import org.bukkit.material.Wool;
 import java.util.*;
 
 public class ParseUtils {
+
+    public static String[] rsplit(final String string, final String sep) {
+        final int index = string.lastIndexOf(sep);
+        if ( index == -1 )
+            return new String[]{string, ""};
+        return new String[]{string.substring(0, index), string.substring(index+1)};
+    }
 
     public static String prettyName(final Material mat) {
         return WordUtils.capitalize(mat.name().toLowerCase().replaceAll("_+", " "));
@@ -207,6 +215,7 @@ public class ParseUtils {
         return new ItemStack(material, 1, damage);
     }
 
+
     public static Map<String, String> tokenize(String item) {
         HashMap<String, String> out = new HashMap<String, String>();
         if ( item == null || item.length() == 0 )
@@ -224,6 +233,7 @@ public class ParseUtils {
 
         return out;
     }
+
 
     public static Map<String, String> tokenizeLore(List<String> lore) {
         HashMap<String, String> out = new HashMap<String, String>();
@@ -254,6 +264,7 @@ public class ParseUtils {
             loreConfig(portal, entry.getKey(), entry.getValue());
     }
 
+
     public static void configFromLore(final ABPortal portal, final ItemMeta meta) {
         // If there's no lore, obviously this does nothing.
         if (!meta.hasLore())
@@ -262,10 +273,12 @@ public class ParseUtils {
         configFromLore(portal, tokenizeLore(meta.getLore()));
     }
 
+
     public static void requireValue(final String key, final String value) {
-        if (value == null || value.length() == 0)
+        if ( value == null || value.length() == 0 )
             throw new IllegalArgumentException(key + " must have a value.");
     }
+
 
     public static void loreConfig(final ABPortal portal, final String key, final String value) {
         if (key.equals("owner")) {

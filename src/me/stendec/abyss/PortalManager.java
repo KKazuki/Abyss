@@ -71,6 +71,10 @@ public abstract class PortalManager {
         return allPortals.get(uid);
     }
 
+    public final ArrayList<String> getOwners() {
+        return new ArrayList<String>(playerPortals.keySet());
+    }
+
 
     public boolean destroy(final ABPortal portal) {
         // See if we can remove the portal.
@@ -378,6 +382,7 @@ public abstract class PortalManager {
     public abstract ABPortal getAt(final Location location);
     public abstract ABPortal getUnder(final Location location);
     public abstract ArrayList<ABPortal> getNear(final Location location);
+    public abstract ArrayList<ABPortal> getNear(final Location location, final double range);
     public abstract ArrayList<ABPortal> getWithin(final Location minimum, final Location maximum);
 
     ///////////////////////////////////////////////////////////////////////////

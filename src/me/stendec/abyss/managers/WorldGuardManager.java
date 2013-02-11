@@ -197,6 +197,16 @@ public class WorldGuardManager extends PortalManager {
         return out;
     }
 
+    public ArrayList<ABPortal> getNear(final Location location, final double range) {
+        if ( location == null )
+            return null;
+
+        final BlockVector min = new BlockVector(toVector(location).subtract(range, range, range));
+        final BlockVector max = new BlockVector(toVector(location).add(range, range, range));
+
+        return getWithin(location.getWorld(), min, max);
+    }
+
     public ArrayList<ABPortal> getWithin(final Location min, final Location max) {
         return getWithin(min.getWorld(), new BlockVector(toVector(min)), new BlockVector(toVector(max)));
     }

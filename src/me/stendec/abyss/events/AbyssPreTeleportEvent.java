@@ -9,6 +9,9 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.bukkit.util.Vector;
 
+/**
+ *
+ */
 public class AbyssPreTeleportEvent extends Event implements Cancellable {
 
     // Event API
@@ -17,18 +20,17 @@ public class AbyssPreTeleportEvent extends Event implements Cancellable {
     public static HandlerList getHandlerList() { return handlers; }
 
     // Cancellable API
-    private boolean cancelled;
+    boolean cancelled;
     public boolean isCancelled() { return cancelled; }
     public void setCancelled(boolean b) { cancelled = b; }
 
     // Event Data
-    private final ABPortal from_portal;
-    private final ABPortal portal;
-    private final Entity entity;
+    protected final ABPortal from_portal;
+    protected final ABPortal portal;
+    protected final Entity entity;
 
-    private Location destination;
-    private Vector velocity;
-
+    protected Location destination;
+    protected Vector velocity;
 
 
     public AbyssPreTeleportEvent(final ABPortal from_portal, final ABPortal portal, final Entity entity, final Location destination, final Vector velocity) {
@@ -41,19 +43,34 @@ public class AbyssPreTeleportEvent extends Event implements Cancellable {
         this.velocity = velocity;
     }
 
-
+    /**
+     * Gets the portal the entity is being teleported to.
+     * @return The destination {@link ABPortal} instance.
+     */
     public ABPortal getPortal() {
         return portal;
     }
 
+    /**
+     * Gets the portal the entity is teleporting from.
+     * @return The departure {@link ABPortal} instance, or null if the entity isn't leaving from a portal.
+     */
     public ABPortal getFromPortal() {
         return from_portal;
     }
 
+    /**
+     * Gets the entity being teleported.
+     * @return {@link Entity} involved in the event.
+     */
     public Entity getEntity() {
         return entity;
     }
 
+    /**
+     * Gets the destination the entity will be teleported to.
+     * @return {@link Location} the entity is to be teleported to.
+     */
     public Location getDestination() {
         return destination;
     }
@@ -63,13 +80,19 @@ public class AbyssPreTeleportEvent extends Event implements Cancellable {
         this.destination = destination;
     }
 
+    /**
+     * Gets the velocity the entity will have upon being teleported.
+     * @return {@link Vector} of the entity's new velocity.
+     */
     public Vector getVelocity() {
         return velocity;
     }
 
     public void setVelocity(final Vector velocity) {
-        Validate.notNull(velocity);
-        this.velocity = velocity;
+        if ( velocity == null )
+            this.velocity = new Vector(0, 0, 0);
+        else
+            this.velocity = velocity;
     }
 
 }

@@ -1,5 +1,6 @@
 package me.stendec.abyss.commands;
 
+import com.google.common.collect.ImmutableList;
 import me.stendec.abyss.*;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
@@ -23,6 +24,67 @@ public class ListCommand extends ABCommand {
 
         usage = "<@owner> <personal|item|all> <color>";
         description = "List the portals that match the given criteria.";
+    }
+
+    public List<String> complete(final CommandSender sender, final Block target, final ABPortal portal, final List<String> args) {
+        if ( args.size() == 0 )
+            return ImmutableList.of("@", "personal", "all");
+
+        // Handle the optional argument.
+        if ( args.size() == 1 && args.get(0).startsWith("@") ) {
+            final String arg = args.remove(0);
+            List<String> out = new ArrayList<String>();
+            final String m = arg.substring(1).toLowerCase();
+            for(final Iterator<String> it = plugin.getManager().getOwners().iterator(); it.hasNext(); ) {
+                final String name = it.next();
+                if ( name.startsWith(m) )
+                    out.add("@" + name);
+            }
+
+            return out;
+        }
+
+        // Handle the first argument.
+        if ( args.size() == 1 ) {
+            final String arg = args.remove(0);
+            final String m = arg.toLowerCase();
+            final List<String> out = new ArrayList<String>();
+
+            // Make a list of all matching materials, personal, and all.
+            // Only use materials if we have *something* to filter by, because there's
+            // tons and tons of them.
+            if ( m.length() > 0 )
+                for(final Material mat: Material.values()) {
+                    final String name = mat.name().toLowerCase();
+                    if ( name.startsWith(m) )
+                        out.add(mat.name());
+                }
+
+            if ( "personal".startsWith(m) )
+                out.add("personal");
+
+            if ( "all".startsWith(m) )
+                out.add("all");
+
+            return out;
+        }
+
+        // Handle the second argument.
+        else if ( args.size() == 2 ) {
+            final String arg = args.remove(1);
+            final String m = arg.toLowerCase();
+            final List<String> out = new ArrayList<String>();
+
+            for(final DyeColor c: DyeColor.values()) {
+                final String name = c.name().toLowerCase();
+                if ( name.startsWith(m) )
+                    out.add(c.name());
+            }
+
+            return out;
+        }
+
+        return null;
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {

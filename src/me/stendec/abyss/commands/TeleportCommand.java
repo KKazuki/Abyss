@@ -12,6 +12,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class TeleportCommand extends ABCommand {
 
@@ -24,6 +25,22 @@ public class TeleportCommand extends ABCommand {
 
         usage = "<player> <speed-x> <speed-y> <speed-z>";
         description = "Teleport the given player to the targeted portal, optionally with a specific velocity.";
+    }
+
+    public List<String> complete(final CommandSender sender, final Block target, final ABPortal portal, final List<String> args) {
+        if ( args.size() != 1 || ! sender.hasPermission("abyss.command.teleport_other") )
+            return null;
+
+        Player p = (sender instanceof Player) ? (Player) sender : null;
+        List<String> out = new ArrayList<String>();
+        final String m = args.get(0).toLowerCase();
+
+        for(final Player player: plugin.getServer().getOnlinePlayers()) {
+            if ( (p == null || p.canSee(player)) && (m.length() == 0 || player.getName().toLowerCase().startsWith(m)) )
+                out.add(player.getName());
+        }
+
+        return out;
     }
 
     public boolean run(final CommandSender sender, final PlayerInteractEvent event, final Block target, ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
@@ -52,6 +69,11 @@ public class TeleportCommand extends ABCommand {
 
         if ( player == null ) {
             t().red("Non-players using this command must specify a player to be teleported.").send(sender);
+            return false;
+        }
+
+        if ( !player.equals(sender) && !sender.hasPermission("abyss.command.teleport_other") ) {
+            t().red("You do not have permission to teleport other players with this command.").send(sender);
             return false;
         }
 
@@ -115,16 +137,28 @@ public class TeleportCommand extends ABCommand {
 
         // Attempt to teleport the player.
         if ( plugin.doTeleport(player, null, portal, player.getLocation(), v) != null ) {
-            t().darkgreen(ChatColor.RESET, "The player %s was teleported to %s successfully.", player.getDisplayName(), portal.getDisplayName()).send(sender);
+            if ( player.equals(sender) )
+                t().darkgreen("You were teleported to ").append(portal.getDisplayName()).
+                        darkgreen(" successfully.").send(sender);
+            else {
+                t().darkgreen("The player ").reset(player.getDisplayName()).darkgreen(" was teleported to ").
+                        append(portal.getDisplayName()).darkgreen(" successfully.").send(sender);
 
-            // Let the player know who teleported them to avoid abuse.
-            if ( !player.equals(sender) )
-                t().darkgreen(ChatColor.RESET, "You were teleported to %s by %s.", portal.getDisplayName(), sender.getName()).send(player);
+                // Let the player know who teleported them to avoid abuse.
+                t().darkgreen("You were teleported to ").append(portal.getDisplayName()).darkgreen(" by ").
+                        reset((sender instanceof Player) ? ((Player) sender).getDisplayName() : sender.getName()).
+                        send(sender);
+            }
 
             return true;
         }
 
-        t().red(ChatColor.RESET, "The player %s could not be teleported to %s.", player.getDisplayName(), portal.getDisplayName()).send(sender);
+        if ( player.equals(sender) )
+            t().red("You could not be teleported to ").append(portal.getDisplayName()).send(sender);
+        else
+            t().red("The player ").reset(player.getDisplayName()).red(" could not be teleported to ").
+                    append(portal.getDisplayName()).send(sender);
+
         return false;
     }
 

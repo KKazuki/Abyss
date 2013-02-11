@@ -1,6 +1,7 @@
 package me.stendec.abyss;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import me.stendec.abyss.commands.*;
 import me.stendec.abyss.events.AbyssPreTeleportEvent;
@@ -13,6 +14,7 @@ import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.EntityUtils;
 import me.stendec.abyss.util.IteratorChain;
 import me.stendec.abyss.util.ParseUtils;
+import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
@@ -130,7 +132,7 @@ public final class AbyssPlugin extends JavaPlugin {
     @Override
     public void onLoad() {
         // Bare Basics
-        // saveDefaultConfig();
+        saveDefaultConfig();
         portalFile = new File(getDataFolder(), "portals.yml");
 
         // Command Creation
@@ -648,62 +650,74 @@ public final class AbyssPlugin extends JavaPlugin {
     // Commands
     ///////////////////////////////////////////////////////////////////////////
 
-    public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] arguments) {
-        // We only support our command.
-        if ( ! command.getName().equals("abyss") )
-            return false;
-
-        // Convert the arguments to a list.
-        final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
-
-        // Remove empty strings.
-        for(Iterator<String> it = args.iterator(); it.hasNext(); )
-            if ( it.next().trim().length() == 0 )
-                it.remove();
+    public String getABCommand(final String label, final List<String> args, boolean complete) {
+        String key = null;
+        String help = null;
 
         // If we need help, move that *after* the sub-command.
         if ( label.equals("abyss") && args.size() > 0 && args.get(0).equalsIgnoreCase("help") ) {
             if ( args.size() > 1 ) {
-                final String help = args.remove(0);
-                args.add(1, help);
+                help = args.remove(0);
             } else
-                return false;
+                return null;
         }
+
+        if ( ! label.equals("abyss") )
+            key = label.substring(2);
+        else if ( args.size() > 0 )
+            key = args.remove(0).toLowerCase();
+
+        if ( key == null ) {
+            if ( help != null )
+                args.add(0, help);
+            return null;
+        }
+
+        if ( aliases.containsKey(key) )
+            key = aliases.get(key);
+
+        // We don't want to tab-complete if this isn't the last value.
+        if ( complete && args.size() != 0 )
+            complete = false;
+
+        if ( ! complete && ! commands.containsKey(key) ) {
+            // If we don't have an exact match, try iterating the alphabetized
+            // list of all commands for a partial match.
+            final List<String> possible = new ArrayList<String>(commands.keySet());
+            Collections.sort(possible);
+            for(final String cmdName: possible)
+                if ( cmdName.startsWith(key) ) {
+                    key = cmdName;
+                    break;
+                }
+        }
+
+        if ( help != null )
+            args.add(0, help);
+
+        return key;
+    }
+
+
+    public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] arguments) {
+        Validate.notNull(sender, "sender cannot be null");
+        Validate.notNull(command, "command cannot be null");
+        Validate.notNull(label, "label cannot be null");
+        Validate.notNull(arguments, "arguments cannot be null");
+
+        // Convert the arguments to a list with no empty strings.
+        final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
+        for(Iterator<String> it = args.iterator(); it.hasNext(); )
+            if ( it.next().trim().length() == 0 )
+                it.remove();
 
         // Determine the sub-command.
-        String cmdkey = null;
-        if ( ! label.equals("abyss") ) {
-            cmdkey = label.substring(2);
-        } else if ( args.size() > 0 ) {
-            // Take the first argument.
-            cmdkey = args.remove(0).toLowerCase();
-        }
-
-        // If we don't have a command key, fail.
+        final String cmdkey = getABCommand(label, args, false);
         if ( cmdkey == null )
             return false;
 
-        // Handle aliases first.
-        if ( aliases.containsKey(cmdkey) )
-            cmdkey = aliases.get(cmdkey);
-
         // Try getting a command from that key.
         ABCommand cmd = commands.get(cmdkey);
-        if ( cmd == null ) {
-            final ArrayList<String> possible = new ArrayList<String>();
-            for(final String key: commands.keySet())
-                if ( key.startsWith(cmdkey) )
-                    possible.add(key);
-
-            if ( possible.size() > 0 ) {
-                // We've got a command, so use it.
-                Collections.sort(possible);
-                cmdkey = possible.get(0);
-                cmd = commands.get(cmdkey);
-            }
-        }
-
-        // If we still don't have one, return.
         if ( cmd == null ) {
             t().red("No such sub-command: ").reset(cmdkey).send(sender);
             return true;
@@ -721,6 +735,43 @@ public final class AbyssPlugin extends JavaPlugin {
         return cmd.onCommand(sender, command, label, args);
     }
 
+    public List<String> onTabComplete(final CommandSender sender, final Command command, final String label, final String[] arguments) {
+        Validate.notNull(sender, "sender cannot be null");
+        Validate.notNull(command, "command cannot be null");
+        Validate.notNull(label, "label cannot be null");
+        Validate.notNull(arguments, "arguments cannot be null");
+
+        // Convert the arguments to a list.
+        final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
+        // for(Iterator<String> it = args.iterator(); it.hasNext(); )
+        //     if ( it.next().trim().length() == 0 )
+        //         it.remove();
+
+        // Determine the sub-command.
+        final String cmdkey = getABCommand(label, args, true);
+        if ( cmdkey == null ) {
+            // No sub-command? Auto-complete it!
+            List<String> out = new ArrayList<String>(commands.keySet());
+            out.add("help");
+            return out;
+        }
+
+        // Try getting a command.
+        ABCommand cmd = commands.get(cmdkey);
+        if ( cmd == null ) {
+            List<String> out = new ArrayList<String>(commands.keySet());
+            for(final Iterator<String> it = out.iterator(); it.hasNext(); )
+                if ( ! it.next().startsWith(cmdkey) )
+                    it.remove();
+
+            if ( "help".startsWith(cmdkey) )
+                out.add("help");
+            return out;
+        }
+
+        // Pass it on.
+        return cmd.onTabComplete(sender, command, label, args);
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Portal Placement Code
@@ -898,6 +949,7 @@ public final class AbyssPlugin extends JavaPlugin {
     public PortalManager getManager() {
         return manager;
     }
+
 
     private static ArrayList<ABPortal> empty = new ArrayList<ABPortal>();
 

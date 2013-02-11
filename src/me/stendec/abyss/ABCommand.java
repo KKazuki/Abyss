@@ -10,15 +10,14 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.util.ChatPaginator;
 
 import java.util.*;
 
-public abstract class ABCommand implements CommandExecutor {
+public abstract class ABCommand implements TabExecutor {
 
     protected final AbyssPlugin plugin;
     public final String name;
@@ -145,8 +144,6 @@ public abstract class ABCommand implements CommandExecutor {
     public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] arguments) {
         // Convert the arguments to a list.
         final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
-
-        // Remove empty strings.
         for(Iterator<String> it = args.iterator(); it.hasNext(); )
             if ( it.next().trim().length() == 0 )
                 it.remove();
@@ -260,7 +257,7 @@ public abstract class ABCommand implements CommandExecutor {
 
         if ( require_portal || require_block || try_block ) {
             out.append((require_portal || require_block) ? " [" : " <");
-            out.append(" [").append(isPlayer ? "@x,y,z|": "").append("@x,y,z,world|");
+            out.append(isPlayer ? "@x,y,z|": "").append("@x,y,z,world|");
             out.append(isPlayer ? "+|+player|*|*player" : "+player|*player");
 
             if ( require_portal )
@@ -290,11 +287,199 @@ public abstract class ABCommand implements CommandExecutor {
         return true;
     }
 
+    public List<String> onTabComplete(final CommandSender sender, final Command command, final String label, final String[] arguments) {
+        // Convert the arguments to a list.
+        final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
+        // for(Iterator<String> it = args.iterator(); it.hasNext(); )
+        //     if ( it.next().trim().length() == 0 )
+        //         it.remove();
+
+        return onTabComplete(sender, command, label, args);
+    }
+
+    public List<String> onTabComplete(final CommandSender sender, final Command command, final String label, final List<String> args) {
+
+        final Player player = (sender instanceof Player) ? (Player) sender : null;
+        final ArrayList<String> out = new ArrayList<String>();
+
+        Block block = null;
+        ABPortal portal = null;
+
+        // If we don't have any arguments, send the basics.
+        if ( args.size() == 0 ) {
+            out.add("help");
+            if ( try_block || require_portal || require_block ) {
+                out.add("@");
+                out.add("+");
+                out.add("*");
+            }
+
+            if ( require_block )
+                return out;
+            else if ( require_portal ) {
+                // Add nearby portals to the list.
+                if ( player != null ) {
+                    final List<ABPortal> portals = plugin.getManager().getNear(player.getLocation(), 50);
+                    for(final ABPortal p: portals)
+                        if ( p.canManipulate(player) )
+                            out.add(p.getName());
+                }
+
+                return out;
+            }
+
+            // If we get to this point, use the command-specific completer.
+            List<String> new_out = complete(sender, block, portal, args);
+            if ( new_out != null )
+                out.addAll(new_out);
+
+            return out;
+        }
+
+        // Check for help. We don't auto-complete help.
+        if ( args.get(0).equalsIgnoreCase("help") )
+            return null;
+
+        // We have arguments, so try handling the portal/block arguments.
+        if ( require_portal ) {
+            final String arg = args.remove(0);
+            try {
+                portal = parsePortal(sender, arg);
+            } catch(IllegalArgumentException ex) {
+                if ( args.size() > 0 ) {
+                    sender.sendMessage(ex.getMessage());
+                    return null;
+                }
+            }
+
+            if ( portal != null )
+                block = portal.getLocation().getBlock();
+            else {
+                // We couldn't get a portal. Auto-complete it.
+                if ( arg.startsWith("@") ) {
+                    if ( StringUtils.countMatches(arg, ",") == 3 ) {
+                        final String[] pair = ParseUtils.rsplit(arg, ",");
+                        final String w = pair[1].toLowerCase();
+                        final String pre = pair[0] + ",";
+                        for(final World world: plugin.getServer().getWorlds()) {
+                            final String name = world.getName().toLowerCase();
+                            if ( w.length() == 0 || name.startsWith(w) )
+                                out.add(pre + world.getName());
+                        }
+                    }
+                } else if ( arg.startsWith("+") || arg.startsWith("*") ) {
+                    final String pre = arg.substring(0, 1);
+                    final String m = arg.substring(1).toLowerCase();
+                    for(final Player p: plugin.getServer().getOnlinePlayers()) {
+                        final String name = p.getName().toLowerCase();
+                        if ( (player == null || player.canSee(p)) && (m.length() == 0 || name.startsWith(m)) )
+                            out.add(pre + p.getName());
+                    }
+                } else if ( arg.length() > 0 ) {
+                    // Complete portal names.
+                    final String m = arg.toLowerCase();
+                    for(final Iterator<ABPortal> it = plugin.getManager().iterator(); it.hasNext(); ) {
+                        final ABPortal p = it.next();
+                        if ( p.getName().toLowerCase().startsWith(m) )
+                            out.add(p.getName());
+                    }
+
+                } else {
+                    // Just complete with nearby portals.
+                    out.add("@");
+                    out.add("+");
+                    out.add("*");
+
+                    if ( player != null ) {
+                        final List<ABPortal> portals = plugin.getManager().getNear(player.getLocation(), 50);
+                        for(final ABPortal p: portals)
+                            if ( p.canManipulate(player) )
+                                out.add(p.getName());
+                    }
+                }
+
+                return out;
+            }
+        }
+
+        if ( block == null && (try_block || require_block) ) {
+            final String arg = args.remove(0);
+            try {
+                block = parseBlock(sender, arg);
+            } catch(IllegalArgumentException ex) {
+                if ( args.size() > 0 && require_block ) {
+                    sender.sendMessage(ex.getMessage());
+                    return null;
+                }
+            }
+
+            if ( block == null ) {
+                if ( require_block ) {
+                    // Auto-complete me.
+                    if ( arg.startsWith("@") ) {
+                        if ( StringUtils.countMatches(arg, ",") == 3 ) {
+                            final String[] pair = ParseUtils.rsplit(arg, ",");
+                            final String w = pair[1].toLowerCase();
+                            final String pre = pair[0] + ",";
+                            for(final World world: plugin.getServer().getWorlds()) {
+                                final String name = world.getName().toLowerCase();
+                                if ( w.length() == 0 || name.startsWith(w) )
+                                    out.add(pre + world.getName());
+                            }
+                        }
+                    } else if ( arg.startsWith("+") || arg.startsWith("*") ) {
+                        final String pre = arg.substring(0, 1);
+                        final String m = arg.substring(1).toLowerCase();
+                        for(final Player p: plugin.getServer().getOnlinePlayers()) {
+                            final String name = p.getName().toLowerCase();
+                            if ( (player == null || player.canSee(p)) && (m.length() == 0 || name.startsWith(m)) )
+                                out.add(pre + p.getName());
+                        }
+                    } else {
+                        out.add("@");
+                        out.add("+");
+                        out.add("*");
+                    }
+
+                    return out;
+
+                } else {
+                    // Put the argument back since we didn't use it.
+                    args.add(0, arg);
+                }
+
+            } else if ( portal == null ) {
+                // Try getting a portal for our block.
+                portal = plugin.getManager().getAt(block);
+            }
+
+        }
+
+        // Don't auto-complete if we've got too many arguments already.
+        if ( maximumArguments != -1 && args.size() > maximumArguments ) {
+            t().red("Too many arguments.").send(sender);
+            return null;
+        }
+
+        // If we get to this point, use the command-specific completer.
+        List<String> new_out = complete(sender, block, portal, args);
+        if ( new_out != null )
+            out.addAll(new_out);
+
+        return out;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // The Proper API
+    ///////////////////////////////////////////////////////////////////////////
+
     public abstract boolean run(CommandSender sender, PlayerInteractEvent event, Block target, ABPortal portal, ArrayList<String> args) throws NeedsHelp;
 
-    public List<String> tabComplete(CommandSender sender, Block target, ABPortal portal, ArrayList<String> args) {
+    public List<String> complete(CommandSender sender, Block target, ABPortal portal, List<String> args) {
         return null;
     }
+
 
     protected static ColorBuilder t(final String... text) {
         return new ColorBuilder(text);

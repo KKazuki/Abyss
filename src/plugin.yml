@@ -101,6 +101,9 @@ permissions:
     abyss.command.teleport:
         description: Gives access to the Teleport command.
         default: op
+    abyss.command.teleport_other:
+        description: Allows you to teleport someone else with the Teleport command.
+        default: op
     abyss.command.wand:
         description: Gives access to the Wand command.
         default: true

@@ -37,6 +37,10 @@ Portal Tools
 	  - For example, make the dispenser modifier draw blocks from a
 	    chest at an arbitrary location.
 
+DONE	Tab Completion
+	  - Added completion for required portals and blocks.
+	  - Added completion for: List, Teleport, and Wand
+
 
 Alternate Creation Systems
 	Arcane Ritual (Redstone around hole)
