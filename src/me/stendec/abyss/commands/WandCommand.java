@@ -43,7 +43,7 @@ public class WandCommand extends ABCommand {
         }
 
         // See if we've got a command.
-        final String cmdkey = plugin.getABCommand("abyss", args, false);
+        final String cmdkey = plugin.getABCommand("abyss", args, true);
         if ( cmdkey == null )
             // No sub-command? Auto-complete it!
             return ImmutableList.copyOf(plugin.commands.keySet());
@@ -83,7 +83,7 @@ public class WandCommand extends ABCommand {
         }
 
         // Now, get the command.
-        final String cmdkey = plugin.getABCommand("abyss", args, true);
+        final String cmdkey = plugin.getABCommand("abyss", args, false);
         final ABCommand cmd = plugin.commands.get(cmdkey);
         if ( cmd == null ) {
             t().red("No such command: ").reset(cmdkey).send(sender);

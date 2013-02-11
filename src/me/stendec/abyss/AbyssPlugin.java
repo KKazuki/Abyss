@@ -1,12 +1,13 @@
 package me.stendec.abyss;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import me.stendec.abyss.commands.*;
 import me.stendec.abyss.events.AbyssPreTeleportEvent;
-import me.stendec.abyss.listeners.*;
-
+import me.stendec.abyss.listeners.BlockListener;
+import me.stendec.abyss.listeners.ItemListener;
+import me.stendec.abyss.listeners.PlayerListener;
+import me.stendec.abyss.listeners.VehicleListener;
 import me.stendec.abyss.managers.BasicManager;
 import me.stendec.abyss.managers.WorldGuardManager;
 import me.stendec.abyss.modifiers.*;
@@ -26,7 +27,10 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerialization;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Minecart;
+import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -150,6 +154,7 @@ public final class AbyssPlugin extends JavaPlugin {
         new ModifierCommand(this);
         new DestinationsCommand(this);
         new ReloadCommand(this);
+        new UtilityCommand(this);
 
         aliases.put("remove", "delete");
         aliases.put("tp", "teleport");
@@ -746,9 +751,6 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // Convert the arguments to a list.
         final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
-        // for(Iterator<String> it = args.iterator(); it.hasNext(); )
-        //     if ( it.next().trim().length() == 0 )
-        //         it.remove();
 
         // Determine the sub-command.
         final String cmdkey = getABCommand(label, args, true);

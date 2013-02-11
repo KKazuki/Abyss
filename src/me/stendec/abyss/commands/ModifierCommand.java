@@ -1,11 +1,16 @@
 package me.stendec.abyss.commands;
 
 import com.google.common.base.Joiner;
-import me.stendec.abyss.*;
+import me.stendec.abyss.ABCommand;
+import me.stendec.abyss.ABPortal;
+import me.stendec.abyss.AbyssPlugin;
+import me.stendec.abyss.ModInfo;
 import me.stendec.abyss.util.ParseUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -37,9 +42,11 @@ public class ModifierCommand extends ABCommand {
         // If we have an entity event, use that for our default index.
         if ( event != null && event instanceof PlayerInteractEntityEvent ) {
             PlayerInteractEntityEvent entityEvent = (PlayerInteractEntityEvent) event;
-            final FrameInfo info = portal.frameIDs.get(entityEvent.getRightClicked().getUniqueId());
-            if ( info != null || info.type == FrameInfo.Frame.MOD ) {
-                index = portal.mods.indexOf(info);
+            Entity entity = entityEvent.getRightClicked();
+            if ( entity instanceof ItemFrame ) {
+                final ModInfo info = portal.getModFromFrame((ItemFrame) entity);
+                if ( info != null )
+                    index = portal.mods.indexOf(info);
             }
         }
 

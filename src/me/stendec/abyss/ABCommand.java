@@ -1,6 +1,5 @@
 package me.stendec.abyss;
 
-import com.sun.xml.internal.fastinfoset.util.CharArrayString;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.EntityUtils;
 import me.stendec.abyss.util.ParseUtils;
@@ -12,7 +11,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
-import org.bukkit.event.player.PlayerEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.permissions.Permission;
@@ -198,7 +196,8 @@ public abstract class ABCommand implements TabExecutor {
                     return false;
                 }
 
-                block = portal.getLocation().getBlock();
+                if ( block == null )
+                    block = portal.getLocation().getBlock();
             }
 
             if ( portal == null ) {
@@ -450,10 +449,6 @@ public abstract class ABCommand implements TabExecutor {
     public List<String> onTabComplete(final CommandSender sender, final Command command, final String label, final String[] arguments) {
         // Convert the arguments to a list.
         final ArrayList<String> args = new ArrayList<String>(Arrays.asList(arguments));
-        // for(Iterator<String> it = args.iterator(); it.hasNext(); )
-        //     if ( it.next().trim().length() == 0 )
-        //         it.remove();
-
         return onTabComplete(sender, command, label, args);
     }
 

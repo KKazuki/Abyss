@@ -25,6 +25,11 @@ DONE	Entity Type Whitelist
 DONE	Static Portal Effect
 	  - Configuration to choose an effect, delay, etc.
 
+	Rail Connections
+	  - Make rail blocks 'connect' to the sides of portals, so
+	    that people can put more than one rail line directly
+	    next to each other.
+
 
 Portal Modifiers
 1.5	Dropper - Drop Items (Combine code with Dispenser)
@@ -33,7 +38,7 @@ Portal Modifiers
 
 
 Portal Tools
-	Move Modifier Utility Block
+DONE	Move Modifier Utility Block
 	  - For example, make the dispenser modifier draw blocks from a
 	    chest at an arbitrary location.
 
