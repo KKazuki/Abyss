@@ -1,11 +1,13 @@
 package me.stendec.abyss.listeners;
 
-import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.FrameInfo;
 import me.stendec.abyss.util.ColorBuilder;
-import org.bukkit.*;
+import org.bukkit.DyeColor;
+import org.bukkit.GameMode;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Hanging;
 import org.bukkit.entity.ItemFrame;

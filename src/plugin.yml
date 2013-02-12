@@ -1,5 +1,5 @@
 name: Abyss
-version: 3
+version: 4
 description: A water-based portal system for players.
 author: Stendec <me@stendec.me>
 
@@ -25,6 +25,10 @@ permissions:
 
     abyss.moderate:
         description: Allows you to manipulate the portals of other players.
+        default: op
+
+    abyss.update:
+        description: Allows you to see update notices for Abyss.
         default: op
 
     abyss.modifiers.*:
@@ -106,6 +110,9 @@ permissions:
         default: op
     abyss.command.teleport_other:
         description: Allows you to teleport someone else with the Teleport command.
+        default: op
+    abyss.command.update:
+        description: Allows you to update Abyss via command.
         default: op
     abyss.command.wand:
         description: Gives access to the Wand command.

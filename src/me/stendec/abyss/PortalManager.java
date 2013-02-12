@@ -223,6 +223,9 @@ public abstract class PortalManager {
 
 
     public final boolean addToNetworkIds(final ABPortal portal) {
+        if ( ! allPortals.containsKey(portal.uid) )
+            return false;
+
         final HashMap<Short, UUID> portals = getNetworkIds(portal.network, portal.color, portal.owner);
         if ( portals.containsKey(portal.id) )
             return false;

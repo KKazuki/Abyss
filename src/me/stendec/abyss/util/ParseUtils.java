@@ -1,7 +1,6 @@
 package me.stendec.abyss.util;
 
 import me.stendec.abyss.ABPortal;
-import org.apache.commons.lang.Validate;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.*;
 import org.bukkit.entity.EntityType;
@@ -10,7 +9,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Dye;
 import org.bukkit.material.Wool;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class ParseUtils {
 
@@ -41,6 +43,51 @@ public class ParseUtils {
             out += " (" + item.getDurability() + ")";
 
         return out;
+    }
+
+    public static Byte matchUpdate(final String value) {
+        if ( value == null )
+            return null;
+
+        Byte result = null;
+
+        try {
+            result = Byte.parseByte(value);
+        } catch(NumberFormatException ex) { }
+
+        if ( result != null && (result > 2 || result < 0) )
+            return null;
+
+        if ( result == null ) {
+            final String filtered = value.toLowerCase().replaceAll("\\W", "");
+            if ( filtered.equals("false") || filtered.equals("no") )
+                result = 0;
+            else if ( filtered.equals("true") || filtered.equals("yes") )
+                result = 2;
+            else if ( filtered.equals("check") )
+                result = 1;
+        }
+
+        return result;
+    }
+
+    public static String updateString(final Byte value) {
+        if ( value == 0 )
+            return "false";
+        else if ( value == 1 )
+            return "check";
+        else if ( value == 2 )
+            return "true";
+
+        return null;
+    }
+
+    public static String humanReadableByteCount(long bytes, boolean si) {
+        int unit = si ? 1000 : 1024;
+        if (bytes < unit) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(unit));
+        String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
+        return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
     }
 
     public static Rotation matchRotation(final String value) {

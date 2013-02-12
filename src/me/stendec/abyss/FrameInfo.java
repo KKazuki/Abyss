@@ -50,7 +50,7 @@ public class FrameInfo implements ConfigurationSerializable {
 
     public ItemFrame getFrame(boolean force) {
         ItemFrame frame = (instance != null) ? instance.get() : null;
-        if (frame == null) {
+        if (frame == null || !frame.isValid()) {
             if (world != null) {
                 Chunk chunk = world.getChunkAt(chunk_x, chunk_z);
                 if (!chunk.isLoaded() && force)

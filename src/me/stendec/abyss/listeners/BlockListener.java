@@ -120,17 +120,23 @@ public class BlockListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void afterBlockFromTo(BlockFromToEvent event) {
-        final Block block = event.getBlock();
         final Block to = event.getToBlock();
-        if ( block == null || to == null || !AbyssPlugin.validLiquid(block) )
+        if ( to == null )
             return;
 
-        // Get the portal at the block that's flowing.
+        final Block block = to.getRelative(BlockFace.UP);
+        if ( block == null || !AbyssPlugin.validLiquid(block) )
+            return;
+
+        // Get the portal at the block that's above the to block.
         final ABPortal portal = plugin.getManager().getAt(block);
         if ( portal == null )
             return;
 
-        portal.update();
+        // TODO: Make this work right.
+
+        // After the block is gone, update the portal. Give it half a second to make sure.
+        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new UpdatePortals(event, portal), 10L);
     }
 
 

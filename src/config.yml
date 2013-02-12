@@ -1,3 +1,7 @@
+# Auto-Updating
+auto-update: true
+
+
 # Portal Wand Configuration
 wand-name: Portal Wand
 wand-material: STICK

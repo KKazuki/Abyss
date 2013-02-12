@@ -1,11 +1,12 @@
 package me.stendec.abyss.listeners;
 
-import com.google.common.base.Joiner;
 import me.stendec.abyss.*;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.EntityUtils;
-import me.stendec.abyss.util.ParseUtils;
-import org.bukkit.*;
+import org.bukkit.DyeColor;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemFrame;
@@ -16,13 +17,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Dye;
 import org.bukkit.material.Wool;
-import org.bukkit.permissions.Permission;
-import org.bukkit.plugin.PluginManager;
-
-import java.util.*;
 
 public class PlayerListener implements Listener {
 
@@ -40,6 +36,22 @@ public class PlayerListener implements Listener {
 
     private static ColorBuilder t() {
         return new ColorBuilder();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Update Notification
+    ///////////////////////////////////////////////////////////////////////////
+
+    @EventHandler
+    public void onPlayerJoin(final PlayerJoinEvent event) {
+        if ( plugin.updateMessage == null )
+            return;
+
+        Player player = event.getPlayer();
+        if ( ! player.hasPermission("abyss.update") )
+            return;
+
+        player.sendMessage(plugin.updateMessage);
     }
 
     ///////////////////////////////////////////////////////////////////////////

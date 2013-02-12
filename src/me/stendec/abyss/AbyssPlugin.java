@@ -11,10 +11,7 @@ import me.stendec.abyss.listeners.VehicleListener;
 import me.stendec.abyss.managers.BasicManager;
 import me.stendec.abyss.managers.WorldGuardManager;
 import me.stendec.abyss.modifiers.*;
-import me.stendec.abyss.util.ColorBuilder;
-import me.stendec.abyss.util.EntityUtils;
-import me.stendec.abyss.util.IteratorChain;
-import me.stendec.abyss.util.ParseUtils;
+import me.stendec.abyss.util.*;
 import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.Biome;
@@ -53,6 +50,12 @@ public final class AbyssPlugin extends JavaPlugin {
 
     // Storage Files
     private File portalFile;
+
+    // Auto Updater
+    public byte autoUpdate;
+    public Updater updater;
+    public String[] updateMessage;
+    public ArrayList<String> updateCheckers;
 
 
     // Portal Wand Configuration
@@ -140,6 +143,9 @@ public final class AbyssPlugin extends JavaPlugin {
         saveDefaultConfig();
         portalFile = new File(getDataFolder(), "portals.yml");
 
+        // Update Stuff
+        updateCheckers = new ArrayList<String>();
+
         // Command Creation
         commands = new HashMap<String, ABCommand>();
         aliases = new HashMap<String, String>();
@@ -155,6 +161,7 @@ public final class AbyssPlugin extends JavaPlugin {
         new DestinationsCommand(this);
         new ReloadCommand(this);
         new UtilityCommand(this);
+        new UpdateCommand(this);
 
         aliases.put("remove", "delete");
         aliases.put("tp", "teleport");
@@ -233,8 +240,13 @@ public final class AbyssPlugin extends JavaPlugin {
         // Start the Task
         task = getServer().getScheduler().runTaskTimer(this, new PortalEffect(this), 20L, 40L);
 
-    }
 
+        // Try to update.
+        updateMessage = null;
+        if ( autoUpdate != 0 )
+            startUpdater(autoUpdate);
+
+    }
 
     @Override
     public void onDisable() {
@@ -258,11 +270,67 @@ public final class AbyssPlugin extends JavaPlugin {
 
 
     ///////////////////////////////////////////////////////////////////////////
+    // Automatic Updates
+    ///////////////////////////////////////////////////////////////////////////
+
+    public void startUpdater(final byte autoUpdate) {
+        Updater.UpdateType mode = ( autoUpdate == 1 ) ? Updater.UpdateType.NO_DOWNLOAD : Updater.UpdateType.DEFAULT;
+        updater = new Updater(this, "abyss", getFile(), mode, false, new UpdaterCallback());
+    }
+
+
+    private class UpdaterCallback implements Runnable {
+        public void run() {
+            // Get the current status.
+            Updater.UpdateResult result = updater.getResult(false);
+
+            ColorBuilder out = null;
+
+            // Set a message if we've got something important.
+            if ( result == Updater.UpdateResult.DOWNLOADING ) {
+                out = t("Downloading an update for Abyss...");
+
+            } else if ( result == Updater.UpdateResult.UPDATE_AVAILABLE ) {
+                out = t("An update for Abyss is available: ").append(updater.getLatestVersionString()).
+                        gray(" (").reset(ParseUtils.humanReadableByteCount(updater.getFileSize(), true)).
+                        gray(" )");
+
+            } else if ( result == Updater.UpdateResult.SUCCESS ) {
+                out = t("An update for Abyss has been downloaded. Restart the server to apply it.");
+
+            } else if ( result == Updater.UpdateResult.NO_UPDATE && updateCheckers.size() > 0 ) {
+                String message = "There are no updates available for Abyss.";
+                for(final String name: updateCheckers) {
+                    Player player = getServer().getPlayer(name);
+                    if ( player != null && player.hasPermission("abyss.update") )
+                        player.sendMessage(message);
+                }
+
+                updateCheckers.clear();
+            }
+
+            if ( out != null ) {
+                updateMessage = out.toString().split("\n");
+                for(final Player player: getServer().getOnlinePlayers())
+                    if ( player.hasPermission("abyss.update") )
+                        player.sendMessage(updateMessage);
+
+                // Show it to the console too.
+                getServer().getConsoleSender().sendMessage(updateMessage);
+            }
+        }
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
     // Configuration Storage
     ///////////////////////////////////////////////////////////////////////////
 
     public void writeConfig() {
         final FileConfiguration config = getConfig();
+
+        // Update Configuration
+        config.set("auto-update", ParseUtils.updateString(autoUpdate));
 
         // Portal Wand Configuration
         config.set("wand-name", wandName);
@@ -353,6 +421,8 @@ public final class AbyssPlugin extends JavaPlugin {
         final FileConfiguration config = getConfig();
         final Logger log = getLogger();
 
+        config.options().copyDefaults(true);
+
         // Entity Type Whitelist
         entityTypeWhitelist = new HashSet<EntityType>();
         if ( config.contains("entity-type-whitelist") ) {
@@ -365,12 +435,22 @@ public final class AbyssPlugin extends JavaPlugin {
             }
         }
 
+        // Auto Update
+        String string = config.getString("auto-update", "true");
+        Byte result = ParseUtils.matchUpdate(string);
+        if ( result == null ) {
+            autoUpdate = 2;
+            log.warning("Invalid auto-update. Using: true");
+        } else {
+            autoUpdate = result;
+        }
+
 
         // Portal Wand
         wandName = config.getString("wand-name", "Portal Wand");
         wandRange = config.getInt("wand-range", 256);
 
-        String string = config.getString("wand-material");
+        string = config.getString("wand-material");
         wandMaterial = Material.matchMaterial(string);
         if ( wandMaterial == null ) {
             wandMaterial = Material.STICK;
