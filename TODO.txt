@@ -13,12 +13,12 @@ DONE	Entity Type Whitelist
 	  - Configuration to protect player from lava damage.
 	  - Likely not to work with solid materials.
 
-	Frame Material
+DONE	Frame Material
 	  - Custom valid material lists.
 	  - Configure materials can be mixed / must match
 	  - Use frame material as part of the network?
 
-	Frames
+DONE	Frames
 	  - Configuration to only require corners for top x blocks
 	    - Set x to 0 for no corners required.
 

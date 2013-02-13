@@ -82,6 +82,11 @@ public final class AbyssPlugin extends JavaPlugin {
     public double rangeMultiplier;
     public double baseRange;
 
+    // Frame Configuration
+    public boolean frameSingleMaterial;
+    public HashSet<Material> frameMaterials;
+    public int frameCornerDepth;
+
 
     // Effect Configuration
     public boolean usePortalEffect;
@@ -326,94 +331,6 @@ public final class AbyssPlugin extends JavaPlugin {
     // Configuration Storage
     ///////////////////////////////////////////////////////////////////////////
 
-    public void writeConfig() {
-        final FileConfiguration config = getConfig();
-
-        // Update Configuration
-        config.set("auto-update", ParseUtils.updateString(autoUpdate));
-
-        // Portal Wand Configuration
-        config.set("wand-name", wandName);
-        config.set("wand-material", wandMaterial.name());
-        config.set("wand-range", wandRange);
-
-        // Network Configuration
-        config.set("network-material", String.format("%s:%d", defaultNetwork.getType().name(), defaultNetwork.getDurability()));
-        config.set("network-color", defaultColor.name());
-
-        // Portal Dimensions
-        config.set("minimum-depth", minimumDepth);
-        config.set("minimum-size", minimumSize);
-        config.set("maximum-size", maximumSize);
-        config.set("maximum-modifiers", maximumMods);
-
-        // Range Configuration
-        config.set("limit-distance", limitDistance);
-        config.set("base-range", baseRange);
-        config.set("range-multiplier", rangeMultiplier);
-
-        // Portal Configuration
-        config.set("minimum-velocity", minimumVelocity);
-        config.set("maximum-velocity", maximumVelocity);
-        config.set("cooldown-ticks", cooldownTicks);
-        config.set("use-worldguard", useWorldGuard);
-
-        // Effect Configuration
-        config.set("use-portal-effect", usePortalEffect);
-
-        if ( portalEffectData != 0 ) {
-            ConfigurationSection c = config.createSection("portal-effect");
-            c.set("name", portalEffect.name());
-            c.set("data", portalEffectData);
-        } else {
-            config.set("portal-effect", portalEffect.name());
-        }
-
-        if ( portalSoundPitch != 1 || portalSoundVolume != 1 ) {
-            ConfigurationSection c = config.createSection("portal-sound");
-            c.set("name", portalSound.name());
-            c.set("volume", portalSoundVolume);
-            c.set("pitch", portalSoundPitch);
-        } else {
-            config.set("portal-sound", portalSound.name());
-        }
-
-        config.set("use-static-effect", useStaticEffect);
-        config.set("static-effect-centered", staticEffectCentered);
-        config.set("static-effect-full-height", staticEffectFullHeight);
-
-        if ( staticEffect != portalEffect || staticEffectData != portalEffectData ) {
-            if ( staticEffectData != 0 ) {
-                ConfigurationSection c = config.createSection("static-effect");
-                c.set("name", staticEffect.name());
-                c.set("data", staticEffectData);
-            } else {
-                config.set("static-effect", staticEffect.name());
-            }
-        }
-
-        if ( staticSound != portalSound || staticSoundPitch != portalSoundPitch || staticSoundVolume != portalSoundVolume ) {
-            if ( staticSoundVolume != 1 || staticSoundPitch != 1 ) {
-                ConfigurationSection c = config.createSection("static-sound");
-                c.set("name", staticSound.name());
-                c.set("pitch", staticSoundPitch);
-                c.set("volume", staticSoundVolume);
-            } else {
-                config.set("static-sound", staticSound.name());
-            }
-        }
-
-        final ArrayList<String> wl = new ArrayList<String>(entityTypeWhitelist.size());
-        for(final EntityType type: entityTypeWhitelist)
-            wl.add(type.name());
-
-        config.set("entity-white-list", wl);
-
-        // Now, save the configuration to disk.
-        saveConfig();
-    }
-
-
     public void configure() {
         // Reload the configuration from disk.
         reloadConfig();
@@ -503,6 +420,52 @@ public final class AbyssPlugin extends JavaPlugin {
         maximumVelocity = config.getDouble("maximum-velocity", 10);
         cooldownTicks = config.getLong("cooldown-ticks", 40);
         useWorldGuard = config.getBoolean("use-worldguard", true);
+
+
+        // Frame Configuration
+        frameSingleMaterial = config.getBoolean("single-material", true);
+        frameCornerDepth = config.getInt("corner-depth", 2);
+
+        frameMaterials = new HashSet<Material>();
+        List<String> mats = config.getStringList("frame-materials");
+        if ( mats != null )
+            for(String mat: mats) {
+                boolean negative = mat.length() > 1 && mat.charAt(0) == '-';
+                if ( negative )
+                    mat = mat.substring(1);
+
+                if ( mat.equalsIgnoreCase("solid") || mat.equalsIgnoreCase("occluding") ) {
+                    boolean occluding = ! mat.equalsIgnoreCase("solid");
+                    for(final Material m: Material.values()) {
+                        if ( occluding ? m.isOccluding() : m.isSolid() ) {
+                            if ( negative )
+                                frameMaterials.remove(m);
+                            else
+                                frameMaterials.add(m);
+                        }
+                    }
+
+                    continue;
+                }
+
+                final Material m = Material.matchMaterial(mat);
+                if ( m == null ) {
+                    log.warning("Invalid material in frame-materials: " + mat);
+                    continue;
+                }
+
+                if ( negative )
+                    frameMaterials.remove(m);
+                else
+                    frameMaterials.add(m);
+            }
+
+        if ( frameMaterials.size() == 0 ) {
+            log.warning("frame-materials is an empty list. Using: occluding");
+            for(final Material mat: Material.values())
+                if ( mat.isOccluding() )
+                    frameMaterials.add(mat);
+        }
 
 
         // Range Configuration
@@ -869,51 +832,75 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
 
-    public boolean validLayer(final Location location, final int size) {
+    public HashSet<Material> validLayer(final Location location, final short depth, final int size) {
         /* Determine if there's a valid layer at the location. This is assuming
            that the provided location is the lowest X,Z pair of the inside of
            the portal. */
 
         if ( location == null )
-            return false;
+            return null;
 
         // Check the portal blocks.
         for(double x=0; x < size; x++) {
             for(double z=0; z < size; z++) {
                 if (!validLiquid(location.clone().add(x, 0, z)))
-                    return false;
+                    return null;
             }
         }
 
-        // Now, check the frame blocks.
-        for(double x = -1; x < (size + 1); x++) {
-            if (!validFrameBlock(location.clone().add(x, 0, -1)))
-                return false;
+        // Make a hashset to store our materials in.
+        HashSet<Material> out = new HashSet<Material>();
 
-            if (!validFrameBlock(location.clone().add(x, 0, size)))
-                return false;
+        // Now, check the frame blocks.
+        final double min, max;
+        if ( depth < frameCornerDepth ) {
+            min = -1; max = size + 1;
+        } else {
+            min = 0; max = size;
+        }
+
+        for(double x = min; x < max; x++) {
+            Block block = location.clone().add(x, 0, -1).getBlock();
+            if ( !validFrameBlock(block) )
+                return null;
+
+            out.add(block.getType());
+
+            block = location.clone().add(x, 0, size).getBlock();
+            if ( !validFrameBlock(block) )
+                return null;
+
+            out.add(block.getType());
         }
 
         for(double z=0; z < size; z++) {
-            if (!validFrameBlock(location.clone().add(-1, 0, z)))
-                return false;
+            Block block = location.clone().add(-1, 0, z).getBlock();
+            if ( !validFrameBlock(block) )
+                return null;
 
-            if (!validFrameBlock(location.clone().add(size, 0, z)))
-                return false;
+            out.add(block.getType());
+
+            block = location.clone().add(size, 0, z).getBlock();
+            if ( !validFrameBlock(block) )
+                return null;
+
+            out.add(block.getType());
         }
 
-        return true;
+        // Limit ourselves to one material?
+        if ( frameSingleMaterial && out.size() > 1 )
+            return null;
+
+        return out;
     }
 
 
-    public static boolean validFrameBlock(final Location location) {
+    public boolean validFrameBlock(final Location location) {
         return (location != null) && validFrameBlock(location.getBlock());
     }
 
-
-    public static boolean validFrameBlock(final Block block) {
-        final Material mat = block.getType();
-        return (block != null) && (mat.isOccluding() || mat == Material.ICE);
+    public boolean validFrameBlock(final Block block) {
+        return block != null && frameMaterials.contains(block.getType());
     }
 
 
@@ -998,7 +985,17 @@ public final class AbyssPlugin extends JavaPlugin {
         Location loc = location.clone();
 
         short depth = 0;
-        while(validLayer(loc, size)) {
+        HashSet<Material> materials = new HashSet<Material>();
+
+        while(loc.getBlockY() > 0) {
+            HashSet<Material> out = validLayer(loc, depth, size);
+            if ( out == null )
+                break;
+
+            materials.addAll(out);
+            if ( frameSingleMaterial && materials.size() > 1 )
+                break;
+
             loc.subtract(0, 1, 0);
             depth += 1;
         }
@@ -1040,6 +1037,8 @@ public final class AbyssPlugin extends JavaPlugin {
 
     public ArrayList<ABPortal> protectBlock(final Block block) {
         final Location loc = block.getLocation();
+        final int x = loc.getBlockX();
+        final int z = loc.getBlockZ();
         final int y = loc.getBlockY();
 
         // Get all the portals near this block.
@@ -1050,8 +1049,14 @@ public final class AbyssPlugin extends JavaPlugin {
         // Iterate through all the portals, making sure we can do this.
         for(final ABPortal portal: portals) {
             final int py = portal.getLocation().getBlockY();
-            if ( y <= py && y > py - 2 )
+            if ( y <= py && y > py - frameCornerDepth )
                 // Protect the important layers of the frame.
+                return null;
+
+            final Location min = portal.getMinimumLocation();
+            final Location max = portal.getMaximumLocation();
+
+            if ( y <= py && y > py - 2 && !((x == min.getBlockX() || x == max.getBlockX()) && (z == min.getBlockZ() || z == max.getBlockZ())) )
                 return null;
         }
 
@@ -1490,7 +1495,7 @@ public final class AbyssPlugin extends JavaPlugin {
 
                 final World w = center.getWorld();
                 int min_y = portal.getMinimumLocation().getBlockY();
-                final double size = portal.getSize() - 0.5;
+                final double size = ((double) portal.getSize() / 2) - 0.5;
 
                 if ( ! plugin.staticEffectFullHeight ) {
                     center.subtract(0, (portal.depth / 2), 0);
@@ -1503,7 +1508,7 @@ public final class AbyssPlugin extends JavaPlugin {
                     if ( plugin.staticEffectCentered ) {
                         l = center;
                     } else {
-                        l = center.clone().add(((random.nextDouble() * 2) - 1) * size, 1, ((random.nextDouble() * 2) - 1) * size);
+                        l = center.clone().add((random.nextDouble() - 0.5) * size, 1, (random.nextDouble() - 0.5) * size);
                     }
 
                     w.playEffect(l, plugin.staticEffect, plugin.staticEffectData);

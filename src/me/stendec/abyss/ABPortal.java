@@ -1158,14 +1158,21 @@ public class ABPortal implements Comparable<ABPortal> {
         if ( dy < 0 || dy > 1 )
             return false;
 
+        final int bx = location.getBlockX();
+        final int bz = location.getBlockZ();
+
+        // Do we not have corners?
+        if ( dy >= plugin.frameCornerDepth && (x == -1 || x == bx + size) && (z == -1 || z == bz + size) )
+            return false;
+
         // Check X
-        final int dx = x - location.getBlockX();
+        final int dx = x - bx;
         if ( dx < -1 || dx > size )
             return false;
 
         // And Z.
-        final int dz = z - location.getBlockZ();
-        return !( dz < -1 || dz > size );
+        final int dz = z - bz;
+        return !(dz < -1 || dz > size);
     }
 
 

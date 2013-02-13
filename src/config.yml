@@ -26,6 +26,20 @@ maximum-velocity: 10     # We set this to avoid hitting moved-too-quickly.
 cooldown-ticks: 40
 
 
+# Portal Frames
+single-material: false
+corner-depth: 2
+
+# Frame materials is a special value. It is a list of strings. A string may be
+# the name of a block, 'solid' to match *every* solid block, or 'occluding' to
+# match every occluding block. Additionally, the material names may be
+# prefixed with a negative sign to remove the material from the valid materials
+# rather than adding to the list.
+frame-materials:
+  - occluding
+  - ice
+
+
 # Distance Calculations
 limit-distance: true
 base-range: 50

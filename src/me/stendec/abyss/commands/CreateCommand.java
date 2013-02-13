@@ -78,12 +78,12 @@ public class CreateCommand extends ABCommand {
 
         if ( size != -1 ) {
             loc = plugin.findRoot(target.getLocation(), size);
-            if ( loc == null || !plugin.validLayer(loc, size) )
+            if ( loc == null || plugin.validLayer(loc, (short) 0, size) == null )
                 loc = null;
         } else {
             for( size = plugin.minimumSize; size <= plugin.maximumSize; size++ ) {
                 loc = plugin.findRoot(target.getLocation(), size);
-                if ( loc == null || !plugin.validLayer(loc, size) )
+                if ( loc == null || plugin.validLayer(loc, (short) 0, size) == null )
                     loc = null;
                 else
                     break;
