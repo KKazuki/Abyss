@@ -1,3 +1,16 @@
+## Version 4: February 12, 2013 ##
+
+### Added ###
+ * Auto-updater that fetches the latest version from dev.bukkit.org.
+ * Update Command for manually starting an update.
+ * ``single-material`` configuration option for portal frames, defaults to false.
+ * ``corner-depth`` configuration option for portal frames, defaults to 2.
+ * ``frame-materials`` configuration option for portal frames. defaults to [occluding, ice]
+
+### Fixed ###
+ * Removed old, unused code from ABPortal.
+
+
 ## Version 3: February 11, 2013 ##
 
 ### Added ###
