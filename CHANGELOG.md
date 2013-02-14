@@ -1,3 +1,14 @@
+## Version 5: February 13, 2013 ##
+
+### Added ###
+ * Rails will now automatically connect to the edge of portals, making it easier to make compact rail systems using portals.
+ * ``smart-rails`` configuration option for enable new rail logic, defaults to true.
+
+### Fixed ###
+ * Configuration not saving new values into user's configuration files.
+ * Fixed the piston extend event not working properly with the ``corner-depth`` configuration option.
+
+
 ## Version 4: February 12, 2013 ##
 
 ### Added ###
