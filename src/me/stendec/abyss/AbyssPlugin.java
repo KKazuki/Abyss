@@ -1,6 +1,7 @@
 package me.stendec.abyss;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import me.stendec.abyss.commands.*;
 import me.stendec.abyss.events.AbyssPreTeleportEvent;
@@ -87,6 +88,8 @@ public final class AbyssPlugin extends JavaPlugin {
     public HashSet<Material> frameMaterials;
     public int frameCornerDepth;
 
+    // Rails
+    public boolean smartRails;
 
     // Effect Configuration
     public boolean usePortalEffect;
@@ -338,6 +341,7 @@ public final class AbyssPlugin extends JavaPlugin {
         final FileConfiguration config = getConfig();
         final Logger log = getLogger();
 
+        // Copy defaults so we can save them if missing.
         config.options().copyDefaults(true);
 
         // Entity Type Whitelist
@@ -399,7 +403,10 @@ public final class AbyssPlugin extends JavaPlugin {
         minimumDepth = (short) config.getInt("minimum-depth", 2);
         minimumSize = (short) config.getInt("minimum-size", 2);
         maximumSize = (short) config.getInt("maximum-size", 4);
-        maximumMods = (short) config.getInt("maximum-modifiers", maximumSize);
+
+        // Wrap this in a contains check so we don't set it if we don't have to.
+        if ( config.contains("maximum-modifiers") )
+            maximumMods = (short) config.getInt("maximum-modifiers", maximumSize);
 
         if ( minimumSize < 2 ) {
             log.warning("Invalid minimum-size. Must be at least 2.");
@@ -421,13 +428,15 @@ public final class AbyssPlugin extends JavaPlugin {
         cooldownTicks = config.getLong("cooldown-ticks", 40);
         useWorldGuard = config.getBoolean("use-worldguard", true);
 
+        // Rails
+        smartRails = config.getBoolean("smart-rails", true);
 
         // Frame Configuration
         frameSingleMaterial = config.getBoolean("single-material", true);
         frameCornerDepth = config.getInt("corner-depth", 2);
 
         frameMaterials = new HashSet<Material>();
-        List<String> mats = config.getStringList("frame-materials");
+        List<String> mats = config.isList("frame-materials") ? config.getStringList("frame-materials") : ImmutableList.of(config.getString("frame-materials", "occluding"));
         if ( mats != null )
             for(String mat: mats) {
                 boolean negative = mat.length() > 1 && mat.charAt(0) == '-';
@@ -569,6 +578,9 @@ public final class AbyssPlugin extends JavaPlugin {
             }
         }
 
+        // Save with the defaults we just set. This destroys formatting, but I
+        // don't care all that much.
+        saveConfig();
     }
 
 
@@ -664,25 +676,22 @@ public final class AbyssPlugin extends JavaPlugin {
     ///////////////////////////////////////////////////////////////////////////
 
     public String validatePortalWand(final ItemStack item) {
-        if (item == null || item.getType() != wandMaterial)
+        if ( item == null || item.getType() != wandMaterial )
             return null;
 
         final ItemMeta im = item.getItemMeta();
-        if (! im.hasDisplayName() )
+        if ( ! im.hasDisplayName() )
             return null;
 
         String key = im.getDisplayName();
         final int length = key.length();
 
         // Strip color codes from the name for easier processing.
-        key = ChatColor.stripColor(key).toLowerCase();
+        key = ChatColor.stripColor(key);
 
-        // No color was removed. A player may have made this on an anvil, so
-        // we can't accept this.
-        if ( length == key.length() )
-            return null;
-
-        if (!key.startsWith(wandName.toLowerCase()))
+        // Ensure that the string has been shortened, and that it now starts
+        // with the wand name.
+        if ( length == key.length() || !key.startsWith(wandName) )
             return null;
 
         int index = key.lastIndexOf("[");
@@ -693,7 +702,7 @@ public final class AbyssPlugin extends JavaPlugin {
         if (ind2 == -1)
             return null;
 
-        return key.substring(index + 1, ind2);
+        return key.substring(index + 1, ind2).toLowerCase();
     }
 
 
@@ -1274,16 +1283,16 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // If we're dealing with a Minecart, check the destination for tracks.
         if ( entity instanceof Minecart ) {
-            BlockFace bf = EntityUtils.toBlockFace(delta.clone().setY(0));
+            BlockFace bf = BlockUtils.toBlockFace(delta.clone().setY(0));
             if ( bf == BlockFace.SELF )
-                bf = EntityUtils.toBlockFace(to.getRotation()).getOppositeFace();
+                bf = BlockUtils.toBlockFace(to.getRotation()).getOppositeFace();
 
             Block block = dest.getBlock().getRelative(bf);
             while ( to.isNearPortal(block.getLocation()) ) {
                 if ( isRail(block.getType()) ) {
                     // We've got a rail! Move to it and be done.
                     dest = block.getLocation();
-                    delta = EntityUtils.toVector(bf, delta.length());
+                    delta = BlockUtils.toVector(bf, delta.length());
                     break;
                 }
 

@@ -2,8 +2,8 @@ package me.stendec.abyss.listeners;
 
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
+import me.stendec.abyss.util.BlockUtils;
 import me.stendec.abyss.util.ColorBuilder;
-import me.stendec.abyss.util.EntityUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -11,6 +11,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.PistonMoveReaction;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -18,6 +19,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.world.StructureGrowEvent;
+import org.bukkit.material.Rails;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -50,7 +52,8 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
     }
 
 
@@ -68,13 +71,18 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
     }
 
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockFade(BlockFadeEvent event) {
         final Block block = event.getBlock();
+
+        // If we're not changing a block in an important way, who cares?
+        if ( ! AbyssPlugin.validLiquid(block) && plugin.frameMaterials.contains(event.getNewState().getType()) )
+            return;
 
         // Check to see if the block is protected.
         final ArrayList<ABPortal> portals = plugin.protectBlock(block);
@@ -84,7 +92,8 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
     }
 
 
@@ -153,25 +162,36 @@ public class BlockListener implements Listener {
     }
 
 
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true)
     public void onBlockPhysics(BlockPhysicsEvent event) {
         final Block block = event.getBlock();
         if ( block == null )
             return;
 
+        // Handle falling sand, falling gravel, and rails.
         final Material mat = block.getType();
-        if ( mat != Material.SAND && mat != Material.GRAVEL )
+        final boolean falling = mat == Material.SAND || mat == Material.GRAVEL;
+
+        if ( !falling && !BlockUtils.isRail(mat) )
             return;
 
-        // Check to see if the block is protected.
-        final ArrayList<ABPortal> portals = plugin.protectBlock(block);
-        if ( portals == null ) {
-            event.setCancelled(true);
-            return;
+        if ( falling ) {
+            final ArrayList<ABPortal> portals = plugin.protectBlock(block);
+            if ( portals == null ) {
+                event.setCancelled(true);
+                return;
+            }
+
+            // After the block is gone, update all our portals.
+            if ( portals.size() > 0 )
+                plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+
+        } else if ( plugin.smartRails ) {
+            // See if we should do fancy rail manipulation.
+            final ArrayList<ABPortal> portals = plugin.getManager().getNear(block);
+            if ( portals.size() > 0 )
+                plugin.getServer().getScheduler().runTask(plugin, new UpdateRails(event, block, portals));
         }
-
-        // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
     }
 
 
@@ -181,6 +201,11 @@ public class BlockListener implements Listener {
         if (block == null)
             return;
 
+        // See if the player can bypass block protection.
+        final Player player = event.getPlayer();
+        if ( player.isSneaking() && player.hasPermission("abyss.bypass_protection") )
+            return;
+
         // Check to see if the block is protected.
         final ArrayList<ABPortal> portals = plugin.protectBlock(block);
         if ( portals == null ) {
@@ -188,8 +213,14 @@ public class BlockListener implements Listener {
             return;
         }
 
-        // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        // After the block is placed, update all our portals.
+        if ( portals.size() > 0 ) {
+            // If we've got a rail, do special stuff.
+            if ( plugin.smartRails && BlockUtils.isRail(block) )
+                plugin.getServer().getScheduler().runTask(plugin, new UpdateRails(event, block, portals));
+
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        }
     }
 
 
@@ -226,7 +257,8 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new UpdatePortals(event, portals), 10L);
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new UpdatePortals(event, portals), 10L);
     }
 
 
@@ -241,7 +273,7 @@ public class BlockListener implements Listener {
         final Block b2 = b1.getRelative(dir, event.getLength());
 
         // Do ridiculous stuff to get the minimum and maximum points of this cube.
-        Location[] cube = EntityUtils.fixCubeoid(b1.getLocation(), b2.getLocation());
+        Location[] cube = BlockUtils.fixCubeoid(b1.getLocation(), b2.getLocation());
 
         // See if there are any portals involved.
         final ArrayList<ABPortal> portals = plugin.getManager().getWithin(cube[0], cube[1]);
@@ -249,19 +281,21 @@ public class BlockListener implements Listener {
             return;
 
         // See if any important frame blocks were affected.
-        final int min_y = cube[0].getBlockY(), max_y = cube[1].getBlockY();
-        for(final ABPortal portal: portals) {
-            final int py = portal.getLocation().getBlockY();
-            if ( max_y >= (py - 1) && min_y <= py ) {
-                // Protect the important layers of the frame.
-                event.setCancelled(true);
-                return;
+        for(final Block block: event.getBlocks()) {
+            final World world = block.getWorld();
+            final int x = block.getX(), y = block.getY(), z = block.getZ();
+
+            for(final ABPortal portal: portals) {
+                if ( portal.isInFrame(world, x, y, z) ) {
+                    event.setCancelled(true);
+                    return;
+                }
             }
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new UpdatePortals(event, portals), 10L);
-
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new UpdatePortals(event, portals), 10L);
     }
 
 
@@ -269,6 +303,10 @@ public class BlockListener implements Listener {
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         final Block block = event.getBlock();
         if ( block == null )
+            return;
+
+        // If we're not changing a block in an important way, who cares?
+        if ( ! AbyssPlugin.validLiquid(block) && plugin.frameMaterials.contains(event.getTo()) )
             return;
 
         // Check to see if the block is protected.
@@ -279,7 +317,8 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
     }
 
 
@@ -296,7 +335,8 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
     }
 
 
@@ -304,7 +344,7 @@ public class BlockListener implements Listener {
     public void onStructureGrow(StructureGrowEvent event) {
         // Get the bounding box for all the blocks involved.
         final List<BlockState> blocks = event.getBlocks();
-        Location[] cube = getBounds(blocks);
+        Location[] cube = BlockUtils.getBounds(blocks);
 
         // Now, see if any portals are involved.
         final ArrayList<ABPortal> portals = plugin.getManager().getWithin(cube[0], cube[1]);
@@ -334,7 +374,92 @@ public class BlockListener implements Listener {
         }
 
         // After the block is gone, update all our portals.
-        plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+    }
+
+
+    private class UpdateRails implements Runnable {
+
+        private final Cancellable event;
+        private final Block block;
+        private final ABPortal[] portals;
+
+        UpdateRails(final Cancellable event, final Block block, final ArrayList<ABPortal> portals) {
+            this.event = event;
+            this.block = block;
+            portals.trimToSize();
+            this.portals = portals.toArray(new ABPortal[portals.size()]);
+        }
+
+        UpdateRails(final Cancellable event, final Block block, final ABPortal portal) {
+            this.event = event;
+            this.block = block;
+            this.portals = new ABPortal[]{portal};
+        }
+
+        @Override
+        public void run() {
+            // If the event was cancelled, stop right now.
+            if ( event.isCancelled() )
+                return;
+
+            // If the block isn't still a rail, abort.
+            if ( !BlockUtils.isRail(block) )
+                return;
+
+            // Get the block state.
+            BlockState bs = block.getState();
+            Rails data = (Rails) bs.getData();
+
+            // Find the first portal and stick to it.
+            for(final ABPortal portal: portals) {
+                BlockFace face = portal.getFace(block);
+                if ( face == null )
+                    continue;
+
+                // Try finding a rail block.
+                Block target = null;
+                boolean sloped = false;
+
+                // First, look ahead.
+                Block other = block.getRelative(face);
+                if ( (BlockUtils.isRail(other) && !BlockUtils.isBusy(other, block)) || (BlockUtils.isRail(other.getRelative(BlockFace.DOWN)) && !BlockUtils.isBusy(other.getRelative(BlockFace.DOWN), block)) ) {
+                    target = other;
+
+                } else {
+                    // We can go up if it's straight away.
+                    other = other.getRelative(BlockFace.UP);
+                    if ( BlockUtils.isRail(other) && !BlockUtils.isBusy(other, block) ) {
+                        target = other;
+                        sloped = true;
+
+                    } else {
+                        // Check the sides.
+                        BlockFace f = BlockUtils.toLeft(face);
+                        other = block.getRelative(f);
+                        if ( BlockUtils.isRail(other) && !BlockUtils.isBusy(other, block) && portal.getFace(other) == null ) {
+                            target = other;
+                            face = BlockUtils.toRightSub(face);
+                        } else {
+                            f = BlockUtils.toRight(face);
+                            other = block.getRelative(f);
+                            if ( BlockUtils.isRail(other) && !BlockUtils.isBusy(other, block) && portal.getFace(other) == null ) {
+                                target = other;
+                                face = BlockUtils.toLeftSub(face);
+                            }
+                        }
+                    }
+                }
+
+                // Rotate this track.
+                data.setDirection(face, sloped);
+                bs.setData(data);
+                bs.update();
+                return;
+            }
+        }
+
     }
 
 
@@ -365,30 +490,6 @@ public class BlockListener implements Listener {
                 if ( portal != null )
                     portal.update();
         }
-    }
-
-
-    private static Location[] getBounds(List<BlockState> blocks) {
-        if ( blocks == null || blocks.size() == 0 )
-            return null;
-
-        Iterator<BlockState> it = blocks.iterator();
-
-        BlockState bs = it.next();
-        final World world = bs.getWorld();
-
-        int x1 = bs.getX(), y1 = bs.getY(), z1 = bs.getZ();
-        int x2 = x1, y2 = y1, z2 = z1;
-
-        while( it.hasNext() ) {
-            bs = it.next();
-            final int x = bs.getX(), y = bs.getY(), z = bs.getZ();
-            x1 = Math.min(x1, x); x2 = Math.max(x2, x);
-            y1 = Math.min(y1, y); y2 = Math.max(y2, y);
-            z1 = Math.min(z1, z); z2 = Math.max(z2, z);
-        }
-
-        return new Location[]{new Location(world, x1, y1, z1), new Location(world, x2, y2, z2)};
     }
 
 }

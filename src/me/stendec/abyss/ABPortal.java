@@ -1110,6 +1110,41 @@ public class ABPortal implements Comparable<ABPortal> {
         return !( dz < 0 || dz >= size );
     }
 
+    public BlockFace getFace(final Block block) {
+        if ( location == null || block == null || !location.getWorld().equals(block.getWorld()))
+            return null;
+
+        final int dy = block.getY() - location.getBlockY();
+        if ( dy != 1 )
+            return null;
+
+        final int x = block.getX(), z = block.getZ();
+        final int px = location.getBlockX(), pz = location.getBlockZ();
+
+        final int dx = x - px, dz = z - pz;
+
+        if ( dx == -1 ) {
+            if ( dz == -1 || dz == size )
+                return null;
+
+            return BlockFace.WEST;
+
+        } else if ( dx == size ) {
+            if ( dz == -1 || dz == size )
+                return null;
+
+            return BlockFace.EAST;
+
+        } else if ( dz == -1 ) {
+            return BlockFace.NORTH;
+
+        } else if ( dz == size ) {
+            return BlockFace.SOUTH;
+        }
+
+        return null;
+    }
+
 
     public boolean isInPortal(final Block block) {
         if ( block == null )
@@ -1155,7 +1190,7 @@ public class ABPortal implements Comparable<ABPortal> {
 
         // Vertical Check
         final int dy = location.getBlockY() - y;
-        if ( dy < 0 || dy > 1 )
+        if (!( dy == 0 || dy == 1 ))
             return false;
 
         final int bx = location.getBlockX();

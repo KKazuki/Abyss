@@ -65,6 +65,9 @@ public class ItemListener implements Listener {
 
         Player player = (Player) remover;
         FrameInfo info = portal.frameIDs.get(entity.getUniqueId());
+        if ( info == null )
+            return;
+
         ItemFrame frame = (ItemFrame) entity;
 
         if (!portal.canManipulate(player)) {

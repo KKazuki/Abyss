@@ -1,7 +1,7 @@
 package me.stendec.abyss;
 
+import me.stendec.abyss.util.BlockUtils;
 import me.stendec.abyss.util.ColorBuilder;
-import me.stendec.abyss.util.EntityUtils;
 import me.stendec.abyss.util.ParseUtils;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.*;
@@ -100,7 +100,7 @@ public abstract class ABCommand implements TabExecutor {
             else
                 player = getPlayer(key.substring(1));
 
-            return player.getTargetBlock(EntityUtils.transparentBytes, plugin.wandRange);
+            return player.getTargetBlock(BlockUtils.transparentBytes, plugin.wandRange);
         }
 
         throw new IllegalArgumentException(t().red("Invalid block location: ").reset(key).toString());

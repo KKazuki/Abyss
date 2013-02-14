@@ -1,8 +1,8 @@
 package me.stendec.abyss.listeners;
 
 import me.stendec.abyss.*;
+import me.stendec.abyss.util.BlockUtils;
 import me.stendec.abyss.util.ColorBuilder;
-import me.stendec.abyss.util.EntityUtils;
 import org.bukkit.DyeColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -286,7 +286,7 @@ public class PlayerListener implements Listener {
         // Get the block involved.
         Block block = event.getClickedBlock();
         if ( block == null )
-            block = player.getTargetBlock(EntityUtils.transparentBytes, plugin.wandRange);
+            block = player.getTargetBlock(BlockUtils.transparentBytes, plugin.wandRange);
         else
             block = block.getRelative(event.getBlockFace());
 

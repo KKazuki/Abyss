@@ -1,79 +1,7 @@
-# Auto-Updating
+# Abyss Configuration File
+# See: http://dev.bukkit.org/server-mods/abyss/pages/configuration/
+
 auto-update: true
-
-
-# Portal Wand Configuration
-wand-name: Portal Wand
-wand-material: STICK
-wand-range: 256
-
-
-# Default Network Configuration
-network-key: SKULL ITEM:3
-network-color: WHITE
-
-
-# Portal Dimensions
-minimum-depth: 2
-minimum-size: 2
-maximum-size: 4
-# maximum-modifiers: 10  # defaults to maximum-size
-
-
-# Portal Configuration
-minimum-velocity: 0.15
-maximum-velocity: 10     # We set this to avoid hitting moved-too-quickly.
-cooldown-ticks: 40
-
-
-# Portal Frames
-single-material: false
-corner-depth: 2
-
-# Frame materials is a special value. It is a list of strings. A string may be
-# the name of a block, 'solid' to match *every* solid block, or 'occluding' to
-# match every occluding block. Additionally, the material names may be
-# prefixed with a negative sign to remove the material from the valid materials
-# rather than adding to the list.
-frame-materials:
-  - occluding
-  - ice
-
-
-# Distance Calculations
-limit-distance: true
-base-range: 50
-depth-multiplier: 25
-
-
-# Whether or not to use WorldGuard for region storage.
-# This is generally good since WorldGuard uses a proper tree for regions, which
-# is much nicer than our silly little per-world lists.
-use-worldguard: true
-
-
-# Portal Effects
-# Sounds can be given as just their name, or a name, volume, and pitch.
-# Effects can be given as just their name, or a name and data bit.
-use-portal-effect: true
-portal-effect: mobspawner flames
-portal-sound: enderman teleport
-
-use-static-effect: true
-# static-effect: smoke  # defaults to portal-effect
-static-effect-centered: false
-static-effect-full-height: true
-static-sound:
-    name: portal
-    volume: 0.2
-    pitch: 1
-
-
-# Entity Type Whitelist
-# Only entities with the listed types can go through portals. This is to make
-# sure we don't accidentally destroy some sort of entity state that we can't
-# recreate when we clone the entity.
-
 entity-type-whitelist:
   - Item
   - XPOrb
@@ -122,3 +50,48 @@ entity-type-whitelist:
   - EnderCrystal
   - SPLASH_POTION
   - EGG
+use-worldguard: true
+
+
+wand-name: Portal Wand
+wand-material: STICK
+wand-range: 256
+
+
+network-key: SKULL ITEM:3
+network-color: WHITE
+
+
+minimum-depth: 2
+minimum-size: 2
+maximum-size: 4
+
+
+use-portal-effect: true
+portal-effect: mobspawner flames
+portal-sound: enderman teleport
+use-static-effect: true
+static-effect-centered: false
+static-effect-full-height: true
+static-sound:
+    name: portal
+    volume: 0.2
+    pitch: 1
+
+
+single-material: false
+corner-depth: 1
+frame-materials: occluding
+
+
+minimum-velocity: 0.15
+maximum-velocity: 10
+
+
+cooldown-ticks: 40
+smart-rails: true
+
+
+limit-distance: true
+base-range: 50
+depth-multiplier: 25

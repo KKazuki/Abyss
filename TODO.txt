@@ -25,7 +25,7 @@ DONE	Frames
 DONE	Static Portal Effect
 	  - Configuration to choose an effect, delay, etc.
 
-	Rail Connections
+DONE	Rail Connections
 	  - Make rail blocks 'connect' to the sides of portals, so
 	    that people can put more than one rail line directly
 	    next to each other.
