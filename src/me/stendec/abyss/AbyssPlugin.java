@@ -407,6 +407,8 @@ public final class AbyssPlugin extends JavaPlugin {
         // Wrap this in a contains check so we don't set it if we don't have to.
         if ( config.contains("maximum-modifiers") )
             maximumMods = (short) config.getInt("maximum-modifiers", maximumSize);
+        else
+            maximumMods = maximumSize;
 
         if ( minimumSize < 2 ) {
             log.warning("Invalid minimum-size. Must be at least 2.");
