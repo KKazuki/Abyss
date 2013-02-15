@@ -18,6 +18,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.material.Rails;
 
@@ -38,6 +39,11 @@ public class BlockListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         final Block block = event.getBlock();
         if (block == null)
+            return;
+
+        // See if the player can bypass block protection.
+        final Player player = event.getPlayer();
+        if ( player.isSneaking() && player.hasPermission("abyss.bypass_protection") )
             return;
 
         // Check to see if the block is protected.
@@ -312,6 +318,45 @@ public class BlockListener implements Listener {
         // Check to see if the block is protected.
         final ArrayList<ABPortal> portals = plugin.protectBlock(block);
         if ( portals == null ) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // After the block is gone, update all our portals.
+        if ( portals.size() > 0 )
+            plugin.getServer().getScheduler().runTask(plugin, new UpdatePortals(event, portals));
+    }
+
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        // Get the bounding box for all the blocks involved.
+        final List<Block> blocks = event.blockList();
+        Location[] cube = BlockUtils.getBoundsBlocks(blocks);
+
+        // Now, see if any portals are involved.
+        final ArrayList<ABPortal> portals = plugin.getManager().getWithin(cube[0], cube[1]);
+        if ( portals == null || portals.size() == 0 )
+            return;
+
+        // See if any important frame blocks were affected. This is awful. A nested for loop.
+        // Thankfully it won't come up often. Use an iterator and remove the blocks that
+        // intersect with portal frames.
+        for(final Iterator<Block> it = blocks.iterator(); it.hasNext(); ) {
+            final Block b = it.next();
+            final World world = b.getWorld();
+            final int x = b.getX(), y = b.getY(), z = b.getZ();
+
+            for(final ABPortal portal: portals) {
+                if ( portal.isInFrame(world, x, y, z) ) {
+                    it.remove();
+                    break;
+                }
+            }
+        }
+
+        // Did we remove everything?
+        if ( blocks.size() == 0 ) {
             event.setCancelled(true);
             return;
         }

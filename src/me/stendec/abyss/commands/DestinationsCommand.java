@@ -35,7 +35,7 @@ public class DestinationsCommand extends ABCommand {
         final boolean dist = sender.hasPermission("abyss.detail.distance");
 
         // Get the destination portals.
-        ArrayList<ABPortal> portals = plugin.getManager().getNetworkForDestination(portal, false);
+        ArrayList<ABPortal> portals = plugin.getDestinations(portal, false);
         if ( portals.size() > 0 ) {
             for(final ABPortal p: portals) {
                 final String n = p.getName();

@@ -50,7 +50,8 @@ public class CreateCommand extends ABCommand {
         }
 
         // Default Configuration
-        int size = -1;
+        short size_x = -1;
+        short size_z = -1;
 
         // First, tokenize our configuration.
         Map<String, String> config = ParseUtils.tokenize(Joiner.on(" ").skipNulls().join(args));
@@ -58,39 +59,57 @@ public class CreateCommand extends ABCommand {
         // Do we have a size value?
         if ( config.containsKey("size") ) {
             final String sz = config.remove("size");
-            try {
-                size = Integer.parseInt(sz);
-            } catch(NumberFormatException ex) {
+            final short[] size = ParseUtils.matchSize(sz);
+            if ( size == null ) {
                 t().red("Configuration Error").send(sender);
                 t().gray("    Unable to parse ").bold("size").gray(": ").reset(sz).send(sender);
                 return false;
             }
 
-            if ( size < 2 ) {
+            size_x = size[0];
+            size_z = size[1];
+
+            if ( size_x < 2 || size_z < 2) {
                 t().red("Configuration Error").send(sender);
-                t("    ").gray().bold("size").gray(" must be at least 2.").send(sender);
+                t("    ").gray().bold("size").gray(" must be at least 2x2.").send(sender);
                 return false;
             }
         }
 
-        // Get the root location, iterating through all possible sizes.
-        Location loc = null;
+        // Try determining what size to use, given the root we've got.
+        final Location loc = plugin.findRoot(target.getLocation());
+        boolean valid = false;
 
-        if ( size != -1 ) {
-            loc = plugin.findRoot(target.getLocation(), size);
-            if ( loc == null || plugin.validLayer(loc, (short) 0, size) == null )
-                loc = null;
-        } else {
-            for( size = plugin.minimumSize; size <= plugin.maximumSize; size++ ) {
-                loc = plugin.findRoot(target.getLocation(), size);
-                if ( loc == null || plugin.validLayer(loc, (short) 0, size) == null )
-                    loc = null;
-                else
-                    break;
+        if ( loc != null ) {
+            if ( size_x != -1 ) {
+                valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+
+            } else if ( plugin.squareOnly ) {
+                final int min = Math.max(plugin.minimumSizeX, plugin.minimumSizeZ);
+                final int max = Math.min(plugin.maximumSizeX, plugin.maximumSizeZ);
+
+                for( size_x = (short) min; size_x <= max; size_x++ ) {
+                    size_z = size_x;
+                    valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+                    if ( valid )
+                        break;
+                }
+
+            } else {
+                for ( size_x = plugin.minimumSizeX; size_x <= plugin.maximumSizeX; size_x++ ) {
+                    for ( size_z = plugin.minimumSizeZ; size_z <= plugin.maximumSizeZ; size_z++ ) {
+                        valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+                        if ( valid )
+                            break;
+                    }
+
+                    if ( valid )
+                        break;
+                }
             }
         }
 
-        if ( loc == null ) {
+        if ( ! valid ) {
             t().red("Invalid portal location.").send(sender);
             return false;
         }
@@ -104,16 +123,10 @@ public class CreateCommand extends ABCommand {
         }
 
         // Check for the required depth.
-        int depth = plugin.getDepthAt(loc, size);
+        int depth = plugin.getDepthAt(loc, size_x, size_z);
         if ( depth < plugin.minimumDepth ) {
             t().red(ChatColor.DARK_RED, "Portals must be at least %d blocks deep. This space is " +
                     "%d blocks deep.", plugin.minimumDepth, depth).send(sender);
-            return false;
-        }
-
-        // Run validation.
-        if ( !plugin.validateLocation(loc, size) ) {
-            t().red("Invalid portal location.");
             return false;
         }
 
@@ -170,7 +183,7 @@ public class CreateCommand extends ABCommand {
         }
 
         // Set the portal location and add it to the system.
-        portal.setLocation(loc, size);
+        portal.setLocation(loc, size_x, size_z);
         manager.add(portal);
 
         // Let the sender know it was created successfully and return.

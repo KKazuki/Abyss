@@ -28,6 +28,17 @@ be needed after Bukkit updates.
 
 &nbsp;
 
+#### ``use-multiverse`` ####
+
+ * Default: ``true``
+ * Possible Values: ``true``, ``false``
+
+When this is enabled, Abyss will attempt to get world scaling information from
+Multiverse for calculating portal range, and world blacklists for determining
+valid destinations.
+
+&nbsp;
+
 #### ``use-worldguard`` ####
 
  * Default: ``true``
@@ -108,12 +119,25 @@ The minimum depth required to create a portal.
 
 &nbsp;
 
+#### ``require-square`` ####
+
+ * Default: ``true``
+ * Possible Values: ``true``, ``false``
+
+When this is true, created portals *must* be square unless created with a
+special wand or command with a specific size. This does not affect
+existing portals.
+
+&nbsp;
+
 #### ``minimum-size`` ####
 
  * Default: ``2``
  * Minimum Value: ``2``
 
 The minimum side length required to create a portal.
+
+**Note:** You may also use ``minimum-size-x`` and ``minimum-size-z``.
 
 &nbsp;
 
@@ -122,6 +146,8 @@ The minimum side length required to create a portal.
  * Default: ``4``
 
 The maximum side length allowed when creating a portal without a special tool.
+
+**Note:** You may also use ``maximum-size-x`` and ``maximum-size-z``.
 
 &nbsp;
 
@@ -331,3 +357,14 @@ range are taken into account.
  * Default: ``25``
 
 The amount of range added for each block of depth the portal has.
+
+&nbsp;
+
+
+## Portal Modifiers ##
+
+#### ``slime-ball-strength`` ####
+
+ * Default: ``1.0``
+
+The amount to increment a portal's velocity multiplier per slime ball modifier.

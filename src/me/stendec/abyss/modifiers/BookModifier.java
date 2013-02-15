@@ -40,7 +40,7 @@ public class BookModifier extends PortalModifier {
 
         if ( message.isEmpty() ) {
             // Try for the ItemFrame
-            final ItemFrame frame = EntityUtils.getItemFrameAt(info.location);
+            final ItemFrame frame = EntityUtils.getItemFrameAt(info.location.getLocation());
             if ( frame != null ) {
                 text = EntityUtils.getBookTextArray(frame.getItem(), true);
                 if ( text != null )
@@ -59,8 +59,8 @@ public class BookModifier extends PortalModifier {
         // If we've got a message, send it.
         if (!message.isEmpty())
             for(final String string: message)
-                player.sendMessage(color ? string : ChatColor.stripColor(string));
-
+                t().darkgray("[Abyss] ").reset(color ? string : ChatColor.stripColor(string)).
+                        send(player);
     }
 
 }

@@ -3,23 +3,36 @@ package me.stendec.abyss.managers;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.PortalManager;
+import me.stendec.abyss.util.SafeLocation;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.UUID;
 
 public class BasicManager extends PortalManager {
 
-    private HashMap<UUID, ArrayList<UUID>> worldPortals;
+    private HashMap<UUID, HashSet<UUID>> worldPortals;
 
     public BasicManager(final AbyssPlugin instance) {
         super(instance);
 
-        worldPortals = new HashMap<UUID, ArrayList<UUID>>();
+        worldPortals = new HashMap<UUID, HashSet<UUID>>();
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // World Management
+    ///////////////////////////////////////////////////////////////////////////
+
+    public void worldLoad(final World world) {
+        // Do nothing.
+    }
+
+    public void worldUnload(final World world) {
+        // Do nothing here too!
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Portal Management
@@ -27,37 +40,36 @@ public class BasicManager extends PortalManager {
 
     public boolean spatial_add(final ABPortal portal) {
         // If we've got a location, add it to the worldPortals.
-        final Location location = portal.getLocation();
+        final SafeLocation location = portal.getLocation();
         if ( location == null )
             return false;
 
-        final UUID wid = location.getWorld().getUID();
-        ArrayList<UUID> portals = worldPortals.get(wid);
+        final UUID wid = location.getWorldId();
+        HashSet<UUID> portals = worldPortals.get(wid);
         if ( portals == null ) {
-            portals = new ArrayList<UUID>();
+            portals = new HashSet<UUID>();
             worldPortals.put(wid, portals);
         }
 
-        if (!portals.contains(portal.uid))
-            portals.add(portal.uid);
+        portals.add(portal.uid);
 
         return true;
     }
 
 
     public void spatial_update(final ABPortal portal) {
-        final Location location = portal.getLocation();
-        final UUID wid = ( location == null ) ? null : location.getWorld().getUID();
+        final SafeLocation location = portal.getLocation();
+        final UUID wid = ( location != null ) ? location.getWorldId() : null;
         final UUID pid = portal.uid;
 
         for(final UUID key: worldPortals.keySet()) {
-            ArrayList<UUID> portals = worldPortals.get(key);
+            HashSet<UUID> portals = worldPortals.get(key);
             if ( key.equals(wid) ) {
                 if ( portals == null ) {
-                    portals = new ArrayList<UUID>();
+                    portals = new HashSet<UUID>();
                     worldPortals.put(key, portals);
                     portals.add(pid);
-                } else if ( ! portals.contains(pid) )
+                } else
                     portals.add(pid);
 
             } else if ( portals != null && portals.contains(pid) )
@@ -65,7 +77,7 @@ public class BasicManager extends PortalManager {
         }
 
         if ( ! worldPortals.containsKey(wid) ) {
-            ArrayList<UUID> portals = new ArrayList<UUID>();
+            HashSet<UUID> portals = new HashSet<UUID>();
             worldPortals.put(wid, portals);
             portals.add(pid);
         }
@@ -74,11 +86,11 @@ public class BasicManager extends PortalManager {
 
 
     public boolean spatial_remove(final ABPortal portal) {
-        final Location location = portal.getLocation();
+        final SafeLocation location = portal.getLocation();
         if ( location == null )
             return true;
 
-        final ArrayList<UUID> portals = worldPortals.get(location.getWorld().getUID());
+        final HashSet<UUID> portals = worldPortals.get(location.getWorldId());
         if ( portals != null && portals.contains(portal.uid) )
             portals.remove(portal.uid);
 
@@ -94,7 +106,7 @@ public class BasicManager extends PortalManager {
         if (location == null)
             return null;
 
-        final ArrayList<UUID> portals = worldPortals.get(location.getWorld().getUID());
+        final HashSet<UUID> portals = worldPortals.get(location.getWorld().getUID());
         if ( portals == null )
             return null;
 
@@ -111,7 +123,7 @@ public class BasicManager extends PortalManager {
         if (location == null)
             return null;
 
-        final ArrayList<UUID> portals = worldPortals.get(location.getWorld().getUID());
+        final HashSet<UUID> portals = worldPortals.get(location.getWorld().getUID());
         if ( portals == null )
             return null;
 
@@ -131,7 +143,7 @@ public class BasicManager extends PortalManager {
         if (location == null)
             return null;
 
-        final ArrayList<UUID> portals = worldPortals.get(location.getWorld().getUID());
+        final HashSet<UUID> portals = worldPortals.get(location.getWorld().getUID());
         if ( portals == null )
             return null;
 
@@ -151,9 +163,9 @@ public class BasicManager extends PortalManager {
         if (location == null)
             return null;
 
-        final ArrayList<UUID> portals = worldPortals.get(location.getWorld().getUID());
+        final HashSet<UUID> portals = worldPortals.get(location.getWorld().getUID());
         final ArrayList<ABPortal> out = new ArrayList<ABPortal>();
-        if ( portals == null )
+        if ( portals == null || portals.size() == 0 )
             return out;
 
         final World world = location.getWorld();
@@ -190,9 +202,9 @@ public class BasicManager extends PortalManager {
         if ( min.equals(max) )
             return getNear(min);
 
-        final ArrayList<UUID> portals = worldPortals.get(min.getWorld().getUID());
+        final HashSet<UUID> portals = worldPortals.get(min.getWorld().getUID());
         final ArrayList<ABPortal> out = new ArrayList<ABPortal>();
-        if ( portals == null )
+        if ( portals == null || portals.size() == 0 )
             return out;
 
         final double min_x = min.getX();
@@ -204,8 +216,8 @@ public class BasicManager extends PortalManager {
 
         for(final UUID uid: portals) {
             final ABPortal portal = allPortals.get(uid);
-            final Location pmin = portal.getMinimumLocation();
-            final Location pmax = portal.getMaximumLocation();
+            final SafeLocation pmin = portal.getMinimumLocation();
+            final SafeLocation pmax = portal.getMaximumLocation();
 
             final double pmin_x = pmin.getX();
             final double pmax_x = pmax.getX();

@@ -3,6 +3,7 @@ package me.stendec.abyss.modifiers;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.ModInfo;
 import me.stendec.abyss.PortalModifier;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -22,10 +23,13 @@ public class CompassModifier extends PortalModifier {
             if ( ! silent )
                 player.sendMessage("Your compass has been reset.");
 
-        } else {
-            player.setCompassTarget(info.location);
-            if ( ! silent )
-                player.sendMessage("Your compass has been updated.");
+        } else if ( info.location != null ) {
+            final Location loc = info.location.getLocation();
+            if ( loc != null ) {
+                player.setCompassTarget(loc);
+                if ( ! silent )
+                    player.sendMessage("Your compass has been updated.");
+            }
         }
     }
 

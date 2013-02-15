@@ -32,13 +32,22 @@ DONE	Rail Connections
 
 	Multi-World Configuration
 	  - Make it possible to tweak costs for travel between worlds.
-	  - Configuration to select which worlds can be travelled between.
-	  - Hook Multi-world for relative world size? (Like the Nether)
+DONE	  - Configuration to select which worlds can be travelled between.
+DONE	  - Hook Multiverse for relative world size? (Like the Nether)
+
+DONE	Soft Locations
+	  - Catch world load and unload events.
+
+DONE	Block Protection
+	  - EntityExplodeEvent
+
+DONE	Rectangular Portals
+	  - Add a config option to force square portals.
 
 
 Portal Modifiers
 1.5	Dropper - Drop Items (Combine code with Dispenser)
-	Emerald (Block?) - Economy Interaction with Vault
+DONE	Emerald (Block?) - Economy Interaction with Vault
 1.5	Hopper - Take Item(s) from Entities
 
 	Virtual Inventory

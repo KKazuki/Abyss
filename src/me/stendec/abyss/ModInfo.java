@@ -1,6 +1,6 @@
 package me.stendec.abyss;
 
-import org.bukkit.Location;
+import me.stendec.abyss.util.SafeLocation;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.inventory.ItemStack;
 
@@ -12,7 +12,7 @@ public class ModInfo {
     private WeakReference<ABPortal> portal;
 
     public ItemStack item;
-    public Location location;
+    public SafeLocation location;
     public FrameInfo frame;
     public final HashMap<String, String> flags;
     public int task = -1;
@@ -32,7 +32,7 @@ public class ModInfo {
 
     public void updateLocation() {
         ItemFrame f = frame.getFrame(true);
-        location = f.getLocation().getBlock().getRelative(f.getAttachedFace()).getRelative(f.getAttachedFace()).getLocation();
+        location = new SafeLocation(f.getLocation().getBlock().getRelative(f.getAttachedFace()).getRelative(f.getAttachedFace()));
     }
 
 }

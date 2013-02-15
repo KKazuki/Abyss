@@ -82,6 +82,27 @@ public class ParseUtils {
         return null;
     }
 
+    public static short[] matchSize(final String value) {
+        if ( value == null )
+            return null;
+
+        String[] pair;
+        final String filtered = value.trim().toLowerCase();
+
+        if ( filtered.contains("x") )
+            pair = filtered.split("\\s*x\\s*", 2);
+        else if ( filtered.contains(",") )
+            pair = filtered.split("\\s*,\\s*", 2);
+        else
+            return null;
+
+        try {
+            return new short[]{Short.parseShort(pair[0]), Short.parseShort(pair[1])};
+        } catch(NumberFormatException ex) {
+            return null;
+        }
+    }
+
     public static String humanReadableByteCount(long bytes, boolean si) {
         int unit = si ? 1000 : 1024;
         if (bytes < unit) return bytes + " B";

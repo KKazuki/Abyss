@@ -41,6 +41,9 @@ public class EntityUtils {
 
 
     public static ItemFrame getItemFrameAt(final Location loc) {
+        if ( loc == null )
+            return null;
+
         final int x = loc.getBlockX();
         final int y = loc.getBlockY();
         final int z = loc.getBlockZ();

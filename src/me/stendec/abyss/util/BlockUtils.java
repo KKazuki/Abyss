@@ -73,6 +73,34 @@ public class BlockUtils {
         return mat == Material.RAILS || mat == Material.POWERED_RAIL || mat == Material.DETECTOR_RAIL;
     }
 
+    public static Location[] getBoundsBlocks(final List<Block> blocks) {
+        if ( blocks == null || blocks.size() == 0 )
+            return null;
+
+        Iterator<Block> it = blocks.iterator();
+
+        Block b = it.next();
+        final World world = b.getWorld();
+
+        int x1 = b.getX(), y1 = b.getY(), z1 = b.getZ();
+        int x2 = x1, y2 = y1, z2 = z1;
+
+        while( it.hasNext() ) {
+            b = it.next();
+            final int x = b.getX(), y = b.getY(), z = b.getZ();
+
+            if ( x < x1 ) x1 = x;
+            else if ( x > x2 ) x2 = x;
+
+            if ( y < y1 ) y1 = y;
+            else if ( y > y2 ) y2 = y;
+
+            if ( z < z1 ) z1 = z;
+            else if ( z > y2 ) z2 = z;
+        }
+
+        return new Location[]{new Location(world, x1, y1, z1), new Location(world, x2, y2, z2)};
+    }
 
     public static Location[] getBounds(final List<BlockState> blocks) {
         if ( blocks == null || blocks.size() == 0 )
@@ -286,5 +314,35 @@ public class BlockUtils {
         return new Location[]{new Location(world, ox1, oy1, oz1), new Location(world, ox2, oy2, oz2)};
     }
 
+    public static boolean isIris(final Material mat) {
+        switch(mat) {
+            case AIR:
+            case WALL_SIGN:
+            case WOOD_PLATE:
+            case STONE_PLATE:
+            case STATIONARY_WATER:
+            case WATER:
+            case LAVA:
+            case STATIONARY_LAVA:
+            case LADDER:
+            case WEB:
+            case TORCH:
+            case REDSTONE_TORCH_OFF:
+            case REDSTONE_TORCH_ON:
+            case FIRE:
+            case REDSTONE_WIRE:
+            case LEVER:
+            case WOOD_BUTTON:
+            case STONE_BUTTON:
+            case PORTAL:
+            case ENDER_PORTAL:
+            case TRIPWIRE:
+            case TRIPWIRE_HOOK:
+            case SKULL:
+                return false;
+            default:
+                return true;
+        }
+    }
 
 }

@@ -23,17 +23,31 @@ public class ReloadCommand extends ABCommand {
 
     public boolean run(final CommandSender sender, final Event event, final Block target, final ABPortal portal, final ArrayList<String> args) throws NeedsHelp {
         // First, save out the current portals.
-        plugin.savePortals();
+        try {
+            plugin.savePortals();
+        } catch (Exception ex) {
+            t().red("Error saving portals: ").reset(ex.getMessage()).send(sender);
+            return false;
+        }
 
         // Clear the current portals.
         PortalManager manager = plugin.getManager();
         manager.clear();
 
         // Now, reload the configuration.
-        plugin.configure();
+        try {
+            plugin.configure();
+        } catch(Exception ex) {
+            t().red("Error loading configuration: " + ex.getMessage()).send(sender);
+        }
 
         // And reload the portals.
-        plugin.loadPortals();
+        try {
+            plugin.loadPortals();
+        } catch(Exception ex) {
+            t().red("Error loading portals: ").reset(ex.getMessage()).send(sender);
+            return false;
+        }
 
         sender.sendMessage("Abyss has been reloaded.");
         return true;

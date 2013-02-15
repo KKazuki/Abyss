@@ -1,7 +1,12 @@
 package me.stendec.abyss;
 
+import com.onarandombox.MultiverseCore.MultiverseCore;
+import com.onarandombox.MultiverseCore.api.MVWorldManager;
+import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import com.sk89q.worldedit.BlockVector;
+import me.stendec.abyss.util.BlockUtils;
 import me.stendec.abyss.util.ColorBuilder;
+import me.stendec.abyss.util.SafeLocation;
 import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -40,14 +45,16 @@ public class ABPortal implements Comparable<ABPortal> {
     public short destination;
 
     // Portal Location Information
-    private Location minimum;
-    private Location maximum;
+    private SafeLocation minimum;
+    private SafeLocation maximum;
 
-    private Location center;
-    private Location location;
+    private SafeLocation center;
+    private SafeLocation location;
     private Rotation rotation;
     public short depth;
-    private int size;
+
+    private int size_x;
+    private int size_z;
 
     // Modifiers
     public double velocityMultiplier;
@@ -63,14 +70,14 @@ public class ABPortal implements Comparable<ABPortal> {
     public final HashMap<UUID, FrameInfo> frameIDs;
 
     public ABPortal(final AbyssPlugin instance) {
-        this(instance, UUID.randomUUID(), instance.minimumSize);
+        this(instance, UUID.randomUUID(), instance.minimumSizeX, instance.minimumSizeZ);
     }
 
-    public ABPortal(final AbyssPlugin instance, final int size) {
-        this(instance, UUID.randomUUID(), size);
+    public ABPortal(final AbyssPlugin instance, final int size_x, final int size_z) {
+        this(instance, UUID.randomUUID(), size_x, size_z);
     }
 
-    public ABPortal(final AbyssPlugin instance, final UUID uid, final int size) {
+    public ABPortal(final AbyssPlugin instance, final UUID uid, final int size_x, final int size_z) {
         plugin = instance;
 
         frames = new HashMap<FrameInfo.Frame, FrameInfo>();
@@ -89,7 +96,9 @@ public class ABPortal implements Comparable<ABPortal> {
         id = 0;
         destination = 0;
 
-        this.size = size;
+        this.size_x = size_x;
+        this.size_z = size_z;
+
         rotation = Rotation.NONE;
         valid = true;
 
@@ -122,41 +131,48 @@ public class ABPortal implements Comparable<ABPortal> {
         destination = (short) config.getInt("destination", destination);
 
         depth = (short) config.getInt("depth", plugin.minimumDepth);
-        size = config.getInt("size", size);
+
+        size_x = config.getInt("size-x", size_x);
+        size_z = config.getInt("size-z", size_z);
 
         effect = (short) config.getInt("effect", effect);
-        effectSound = (short) config.getInt("effectSound", effectSound);
+        effectSound = (short) config.getInt("effect-sound", effectSound);
 
-        velocityMultiplier = config.getDouble("velocityMultiplier", velocityMultiplier);
-        rangeMultiplier = config.getDouble("rangeMultiplier", rangeMultiplier);
+        velocityMultiplier = config.getDouble("velocity", velocityMultiplier);
+        rangeMultiplier = config.getDouble("range", rangeMultiplier);
 
         try {
             rotation = Rotation.valueOf(config.getString("rotation", rotation.toString()));
         } catch(IllegalArgumentException ex) { rotation = Rotation.NONE; }
 
-        location = loadLocation(config.getConfigurationSection("location"));
+        // Store the new location type in a different key to keep compatibility with the old.
+        if ( config.contains("safe-location") )
+            location = (SafeLocation) config.get("safe-location");
+        else
+            location = loadLocation(config.getConfigurationSection("location"));
 
-        final double half = (double) size / 2;
+        final double half_x = (double) size_x / 2;
+        final double half_z = (double) size_z / 2;
 
-        center = location.clone().add(half, 0, half);
-        minimum = location.clone().subtract(1, depth, 1);
-        maximum = location.clone().add(size, 2, size);
+        center = location.clone(half_x, 0, half_z);
+        minimum = location.clone(-1, -depth, -1);
+        maximum = location.clone(size_x, 2, size_x);
 
         // Load all the FrameInfo objects.
-        World world = location.getWorld();
+        UUID world = location.getWorldId();
 
         if (config.isConfigurationSection("frames")) {
             ConfigurationSection f = config.getConfigurationSection("frames");
             for(String key: f.getKeys(false)) {
                 FrameInfo info = (FrameInfo) f.get(key);
                 info.type = FrameInfo.Frame.valueOf(key);
-                info.world = world;
+                info.worldId = world;
                 frames.put(info.type, info);
                 frameIDs.put(info.id, info);
             }
         }
 
-        mod_invalid = config.getBoolean("mod_invalid", mod_invalid);
+        mod_invalid = config.getBoolean("mod-invalid", mod_invalid);
         eyeCount = config.getInt("eye-count", eyeCount);
 
         // Handle the mod items.
@@ -179,11 +195,13 @@ public class ABPortal implements Comparable<ABPortal> {
                     plugin.getLogger().warning("Error reading frame for: " + uid.toString() + "/" + key);
                 } else {
                     info.frame.type = FrameInfo.Frame.MOD;
-                    info.frame.world = world;
+                    info.frame.worldId = world;
                 }
 
                 info.item = ic.getItemStack("item", null);
-                if (ic.isConfigurationSection("location"))
+                if (ic.contains("safe-location"))
+                    info.location = (SafeLocation) ic.get("safe-location");
+                else if (ic.isConfigurationSection("location"))
                     info.location = loadLocation(ic.getConfigurationSection("location"));
 
                 final List<String> flags = ic.getStringList("flags");
@@ -205,7 +223,7 @@ public class ABPortal implements Comparable<ABPortal> {
     }
 
     public static ABPortal fromConfig(final AbyssPlugin instance, final UUID uid, final ConfigurationSection config) {
-        final ABPortal portal = new ABPortal(instance, uid, instance.minimumSize);
+        final ABPortal portal = new ABPortal(instance, uid, instance.minimumSizeX, instance.minimumSizeZ);
         portal.load(config);
         return portal;
     }
@@ -223,7 +241,7 @@ public class ABPortal implements Comparable<ABPortal> {
         config.set("color", color.name());
 
         config.set("effect", effect);
-        config.set("effectSound", effectSound);
+        config.set("effect-sound", effectSound);
 
         if (id != 0)
             config.set("id", id);
@@ -232,18 +250,19 @@ public class ABPortal implements Comparable<ABPortal> {
             config.set("destination", destination);
 
         if (velocityMultiplier != 1)
-            config.set("velocityMultiplier", velocityMultiplier);
+            config.set("velocity", velocityMultiplier);
 
         if (rangeMultiplier != plugin.rangeMultiplier)
-            config.set("rangeMultiplier", rangeMultiplier);
+            config.set("range", rangeMultiplier);
 
         if ( eyeCount != 0 )
             config.set("eye-count", eyeCount);
 
         config.set("depth", depth);
-        config.set("size", size);
+        config.set("size-x", size_x);
+        config.set("size-z", size_z);
 
-        saveLocation(config.createSection("location"), location);
+        config.set("safe-location", location);
 
         if (rotation != Rotation.NONE)
             config.set("rotation", rotation.toString());
@@ -254,19 +273,19 @@ public class ABPortal implements Comparable<ABPortal> {
             f.set(info.type.toString(), info);
 
         if (mod_invalid)
-            config.set("mod_invalid", mod_invalid);
+            config.set("mod-invalid", mod_invalid);
 
         // Store Mods
-        if (mods != null && mods.size() > 0) {
+        if ( mods != null && mods.size() > 0 ) {
             f = config.createSection("mods");
-            for(int x=0; x<mods.size(); x++) {
+            for(int x=0; x < mods.size(); x++) {
                 ModInfo info = mods.get(x);
 
                 ConfigurationSection m = f.createSection(Integer.toString(x));
                 m.set("frame", info.frame);
                 m.set("item", info.item);
                 if (info.location != null)
-                    saveLocation(m.createSection("location"), info.location);
+                    m.set("safe-location", info.location);
 
                 if(info.flags.size() > 0) {
                     ArrayList<String> flags = new ArrayList<String>(info.flags.size());
@@ -331,8 +350,16 @@ public class ABPortal implements Comparable<ABPortal> {
     // Configuration
 
     public void update() {
+        // We can only update if we've got a location.
+        final Location loc = (location != null) ? location.getLocation() : null;
+        if ( loc == null )
+            return;
+
         boolean changed = false;
-        final short new_depth = plugin.getDepthAt(location, size);
+        short new_depth = plugin.getDepthAt(loc, size_x, size_z);
+        if ( new_depth < plugin.minimumDepth )
+            new_depth = plugin.minimumDepth;
+
         final boolean new_valid = checkValid();
 
         if ( depth != new_depth ) {
@@ -350,47 +377,16 @@ public class ABPortal implements Comparable<ABPortal> {
             plugin.getManager().update(this);
     }
 
-    private static boolean isIris(final Material mat) {
-        switch(mat) {
-            case AIR:
-            case WALL_SIGN:
-            case WOOD_PLATE:
-            case STONE_PLATE:
-            case STATIONARY_WATER:
-            case WATER:
-            case LAVA:
-            case STATIONARY_LAVA:
-            case LADDER:
-            case WEB:
-            case TORCH:
-            case REDSTONE_TORCH_OFF:
-            case REDSTONE_TORCH_ON:
-            case FIRE:
-            case REDSTONE_WIRE:
-            case LEVER:
-            case WOOD_BUTTON:
-            case STONE_BUTTON:
-            case PORTAL:
-            case ENDER_PORTAL:
-            case TRIPWIRE:
-            case TRIPWIRE_HOOK:
-            case SKULL:
-                return false;
-            default:
-                return true;
-        }
-    }
-
     public boolean checkValid() {
         // See if this portal is a valid destination.
         if (mod_invalid)
             return false;
 
         // Make sure the two layers directly above the portal are air.
-        for(double x=0; x<size; x++)
-            for(double z=0; z<size; z++)
-                if (isIris(location.clone().add(x,1,z).getBlock().getType()) ||
-                        isIris(location.clone().add(x,2,z).getBlock().getType()))
+        for(double x=0; x < size_x; x++)
+            for(double z=0; z < size_z; z++)
+                if (BlockUtils.isIris(location.clone(x, 1, z).getBlock().getType()) ||
+                        BlockUtils.isIris(location.clone(x, 2, z).getBlock().getType()))
                     return false;
 
         return true;
@@ -601,50 +597,47 @@ public class ABPortal implements Comparable<ABPortal> {
 
     // Location Information
 
-    public int getSize() {
-        return size;
+    public int getSizeX() { return size_x; }
+    public int getSizeZ() { return size_z; }
+
+    public SafeLocation getLocation() { return location.clone(); }
+    public SafeLocation getCenter() { return center.clone(); }
+
+    public boolean setLocation(final Location loc) {
+        return setLocation(loc, size_x, size_z);
     }
 
-    public Location getLocation() {
-        return location.clone();
+    public boolean setLocation(final Location loc, final int size) {
+        return setLocation(loc, size, size);
     }
 
-    public Location getCenter() {
-        return center.clone();
-    }
-
-    public boolean setLocation(Location loc) {
-        return setLocation(loc, size);
-    }
-
-    public boolean setLocation(Location loc, int sz) {
+    public boolean setLocation(Location loc, int sx, int sz) {
         // Zero out the location.
         loc = loc.getBlock().getLocation();
+        loc = plugin.findRoot(loc);
 
         // Make sure we're actually moving.
-        if ( location != null && location.equals(loc) && sz == size  )
+        if ( location != null && location.equals(loc) && sx == size_x && sz == size_z )
             return true;
 
-        // See if we can move before we do. This also finds the right block to
-        // associate the portal with.
-        loc = plugin.findRoot(loc, sz);
-        if (loc == null || !plugin.validateLocation(loc, sz))
-            return false;
-
         // Set our new depth.
-        depth = plugin.getDepthAt(loc, sz);
+        depth = plugin.getDepthAt(loc, sx, sz);
+        if ( depth < plugin.minimumDepth )
+            depth = plugin.minimumDepth;
 
         destroyEntities(true);
 
-        location = loc;
-        size = sz;
+        location = new SafeLocation(loc);
+        size_x = sx;
+        size_z = sz;
 
         // We need precision for this.
-        double half = (double) size / 2;
+        double half_x = (double) size_x / 2;
+        double half_z = (double) size_z / 2;
 
-        center = location.clone().add(half, 0, half);
-        minimum = location.clone().subtract(1, depth, 1);
-        maximum = location.clone().add(size, 2, size);
+        center = location.clone(half_x, 0, half_z);
+        minimum = location.clone(-1, -depth, -1);
+        maximum = location.clone(size_x, 2, size_z);
 
         createEntities();
 
@@ -822,11 +815,8 @@ public class ABPortal implements Comparable<ABPortal> {
         return setModFrame(info, spawnFrame(loc, face));
     }
 
-    private Location l() {
-        return location.clone(); }
-
     private Location l(final int x, final int y, final int z) {
-        return location.clone().add(x, y, z); }
+        return location.clone(x, y, z).getLocation(); }
 
     public void createEntities() {
         // Don't do this if we've got existing frames.
@@ -842,7 +832,12 @@ public class ABPortal implements Comparable<ABPortal> {
 
         // Make sure we have mods.
         if (mods == null) {
-            int mod_count = Math.min(size, plugin.maximumMods);
+            int mod_count = plugin.maximumMods;
+            if ( rotation == Rotation.NONE || rotation == Rotation.FLIPPED )
+                mod_count = Math.min(size_x, mod_count);
+            else
+                mod_count = Math.min(size_z, mod_count);
+
             mods = new ArrayList<ModInfo>(mod_count);
             for(int index=0; index < mod_count; index++) {
                 mods.add(new ModInfo(this));
@@ -850,72 +845,74 @@ public class ABPortal implements Comparable<ABPortal> {
         }
 
         // Get the center two spots of each wall.
-        int half = (size / 2) - 1;
-        int odd = size % 2;
+        final int half_x = (size_x / 2) - 1;
+        final int half_z = (size_z / 2) - 1;
+
+        final int odd_x = size_x % 2, odd_z = size_z % 2;
 
         if ( rotation == Rotation.CLOCKWISE ) {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(size - 1, 0, half), BlockFace.WEST);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(size - 1, 0, half + 1 + odd), BlockFace.WEST);
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(size_x - 1, 0, half_z), BlockFace.WEST);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(size_x - 1, 0, half_z + 1 + odd_z), BlockFace.WEST);
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size-2, 0, 0), BlockFace.SOUTH);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size-1, 0, 0), BlockFace.SOUTH);
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size_x- 2, 0, 0), BlockFace.SOUTH);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size_x - 1, 0, 0), BlockFace.SOUTH);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size-1, 0, size-1), BlockFace.NORTH);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size-2, 0, size-1), BlockFace.NORTH);
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size_x - 1, 0, size_z - 1), BlockFace.NORTH);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size_x - 2, 0, size_z - 1), BlockFace.NORTH);
 
             // Iterate through the mods, making frames.
-            Location ml = l(size - 1, -1, (size - mods.size()) / 2);
+            Location ml = l(size_x - 1, -1, (size_z - mods.size()) / 2);
             for(final ModInfo info: mods) {
                 setModFrame(info, ml, BlockFace.WEST);
                 ml.add(0, 0, 1);
             }
 
         } else if ( rotation == Rotation.FLIPPED ) {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half + 1 + odd, 0, size - 1), BlockFace.NORTH);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(half, 0, size - 1), BlockFace.NORTH);
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half_x + 1 + odd_x, 0, size_z - 1), BlockFace.NORTH);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(half_x, 0, size_z - 1), BlockFace.NORTH);
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size-1, 0, size-2), BlockFace.WEST);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size-1, 0, size-1), BlockFace.WEST);
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size_x - 1, 0, size_z - 2), BlockFace.WEST);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size_x - 1, 0, size_z - 1), BlockFace.WEST);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, size-1), BlockFace.EAST);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(0, 0, size-2), BlockFace.EAST);
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, size_z - 1), BlockFace.EAST);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(0, 0, size_z - 2), BlockFace.EAST);
 
             // Iterate through the mods, making frames.
-            Location ml = l(size - (1 + ((size - mods.size()) / 2)), -1, size-1);
+            Location ml = l(size_x - (1 + ((size_x - mods.size()) / 2)), -1, size_z-1);
             for(final ModInfo info: mods) {
                 setModFrame(info, ml, BlockFace.NORTH);
                 ml.add(-1, 0, 0);
             }
 
         } else if ( rotation == Rotation.COUNTER_CLOCKWISE ) {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, half+1+odd), BlockFace.EAST);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(0, 0, half), BlockFace.EAST);
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, half_z + 1 + odd_z), BlockFace.EAST);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(0, 0, half_z), BlockFace.EAST);
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(1, 0, size-1), BlockFace.NORTH);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, size-1), BlockFace.NORTH);
+            if_id1 = setFrame(FrameInfo.Frame.ID1, l(1, 0, size_z - 1), BlockFace.NORTH);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, size_z - 1), BlockFace.NORTH);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(), BlockFace.SOUTH);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(1,0,0), BlockFace.SOUTH);
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, 0), BlockFace.SOUTH);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(1, 0, 0), BlockFace.SOUTH);
 
             // Iterate through the mods, making frames.
-            Location ml = location.clone().add(0, -1, size - (1 + ((size - mods.size()) / 2)));
+            Location ml = l(0, -1, size_z - (1 + ((size_z - mods.size()) / 2)));
             for(ModInfo info: mods) {
                 setModFrame(info, ml, BlockFace.EAST);
                 ml.add(0, 0, -1);
             }
 
         } else {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half, 0, 0), BlockFace.SOUTH);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(half+1+odd, 0, 0), BlockFace.SOUTH);
+            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half_x, 0, 0), BlockFace.SOUTH);
+            if_color = setFrame(FrameInfo.Frame.COLOR, l(half_x + 1 + odd_x, 0, 0), BlockFace.SOUTH);
 
             if_id1 = setFrame(FrameInfo.Frame.ID1, l(0, 0, 1), BlockFace.EAST);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(), BlockFace.EAST);
+            if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, 0), BlockFace.EAST);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size-1, 0, 0), BlockFace.WEST);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size-1, 0, 1), BlockFace.WEST);
+            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size_x - 1, 0, 0), BlockFace.WEST);
+            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size_x - 1, 0, 1), BlockFace.WEST);
 
             // Iterate through the mods, making frames.
-            Location ml = location.clone().add((size - mods.size()) / 2, -1, 0);
+            Location ml = l((size_x - mods.size()) / 2, -1, 0);
             for(ModInfo info: mods) {
                 setModFrame(info, ml, BlockFace.SOUTH);
                 ml.add(1, 0, 0);
@@ -973,11 +970,15 @@ public class ABPortal implements Comparable<ABPortal> {
         if ( portal == null || portal.location == null || location == null )
             return Double.POSITIVE_INFINITY;
 
-        final Location from = location.clone();
-        final Location to = portal.getLocation();
+        final SafeLocation from = location.clone();
+        final SafeLocation to = portal.getLocation();
 
         final World fromWorld = from.getWorld();
         final World toWorld = to.getWorld();
+
+        // If one of the worlds isn't loaded, return infinite distance.
+        if ( fromWorld == null || toWorld == null )
+            return Double.POSITIVE_INFINITY;
 
         final World.Environment fromEnv = fromWorld.getEnvironment();
         final World.Environment toEnv = toWorld.getEnvironment();
@@ -987,19 +988,40 @@ public class ABPortal implements Comparable<ABPortal> {
         //         append("    From: %d, %d, %d [%s:%s]", from.getBlockX(), from.getBlockY(), from.getBlockZ(), fromWorld.getName(), fromEnv.name()).lf().
         //         append("      To: %d, %d, %d [%s:%s]", to.getBlockX(), to.getBlockY(), to.getBlockZ(), toWorld.getName(), toEnv.name()).lf();
 
-        // If we're coming from the nether, adjust from coordinates.
-        if ( fromEnv == World.Environment.NETHER && toEnv != World.Environment.NETHER ) {
-            to.setX(to.getX() / 8);
-            to.setZ(to.getZ() / 8);
-        }
+        // See if we're using Multiverse today.
+        MultiverseCore mv = plugin.getMultiverse();
 
-        else if ( fromEnv != World.Environment.NETHER && toEnv == World.Environment.NETHER ) {
-            from.setX(from.getX() / 8);
-            from.setZ(from.getZ() / 8);
+        if ( mv != null ) {
+            MVWorldManager manager = mv.getMVWorldManager();
+            MultiverseWorld from_mv = manager.getMVWorld(fromWorld);
+            MultiverseWorld to_mv = manager.getMVWorld(toWorld);
+
+            double from_scale = from_mv.getScaling(), to_scale = to_mv.getScaling();
+            if ( from_scale != 1 ) {
+                from.setX(from.getX() * from_scale);
+                from.setZ(from.getZ() * from_scale);
+            }
+
+            if ( to_scale != 1 ) {
+                to.setX(to.getX() * to_scale);
+                to.setZ(to.getZ() * to_scale);
+            }
+
+        } else {
+            // If we're coming from the nether, adjust from coordinates.
+            if ( fromEnv == World.Environment.NETHER && toEnv != World.Environment.NETHER ) {
+                to.setX(to.getX() / 8);
+                to.setZ(to.getZ() / 8);
+            }
+
+            else if ( fromEnv != World.Environment.NETHER && toEnv == World.Environment.NETHER ) {
+                from.setX(from.getX() / 8);
+                from.setZ(from.getZ() / 8);
+            }
         }
 
         // Get the base distance.
-        from.setWorld(toWorld);
+        from.setWorld(to.getWorldId());
         double distance = from.distance(to);
 
         // out.append("    Base: %f", distance).lf();
@@ -1044,7 +1066,7 @@ public class ABPortal implements Comparable<ABPortal> {
         return distance;
     }
 
-    public Location getMinimumLocation() {
+    public SafeLocation getMinimumLocation() {
         return minimum.clone();
     }
 
@@ -1052,7 +1074,7 @@ public class ABPortal implements Comparable<ABPortal> {
         return new BlockVector(minimum.getBlockX(), minimum.getBlockY(), minimum.getBlockZ());
     }
 
-    public Location getMaximumLocation() {
+    public SafeLocation getMaximumLocation() {
         return maximum.clone();
     }
 
@@ -1063,6 +1085,10 @@ public class ABPortal implements Comparable<ABPortal> {
 
     public boolean isNearPortal(final Location loc) {
         return (loc != null) && isNearPortal(loc.getWorld(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+    }
+
+    public boolean isNearPortal(final Block block) {
+        return (block != null) && isNearPortal(block.getWorld(), block.getX(), block.getY(), block.getZ());
     }
 
     public boolean isNearPortal(final World world, final int x, final int y, final int z) {
@@ -1077,12 +1103,12 @@ public class ABPortal implements Comparable<ABPortal> {
 
         // Check X
         final int dx = x - location.getBlockX();
-        if ( dx < -1 || dx > size )
+        if ( dx < -1 || dx > size_x )
             return false;
 
         // Check Z.
         final int dz = z - location.getBlockZ();
-        return !(dz < -1 || dz > size );
+        return !(dz < -1 || dz > size_z );
     }
 
 
@@ -1102,12 +1128,12 @@ public class ABPortal implements Comparable<ABPortal> {
 
         // Check X.
         final int dx = x - location.getBlockX();
-        if ( dx < 0 || dx >= size )
+        if ( dx < 0 || dx >= size_x )
             return false;
 
         // And Z.
         final int dz = z - location.getBlockZ();
-        return !( dz < 0 || dz >= size );
+        return !( dz < 0 || dz >= size_z );
     }
 
     public BlockFace getFace(final Block block) {
@@ -1124,13 +1150,13 @@ public class ABPortal implements Comparable<ABPortal> {
         final int dx = x - px, dz = z - pz;
 
         if ( dx == -1 ) {
-            if ( dz == -1 || dz == size )
+            if ( dz == -1 || dz == size_z )
                 return null;
 
             return BlockFace.WEST;
 
-        } else if ( dx == size ) {
-            if ( dz == -1 || dz == size )
+        } else if ( dx == size_x ) {
+            if ( dz == -1 || dz == size_z )
                 return null;
 
             return BlockFace.EAST;
@@ -1138,7 +1164,7 @@ public class ABPortal implements Comparable<ABPortal> {
         } else if ( dz == -1 ) {
             return BlockFace.NORTH;
 
-        } else if ( dz == size ) {
+        } else if ( dz == size_z ) {
             return BlockFace.SOUTH;
         }
 
@@ -1173,19 +1199,22 @@ public class ABPortal implements Comparable<ABPortal> {
 
         // Check X.
         final int dx = x - location.getBlockX();
-        if ( dx < 0 || dx >= size )
+        if ( dx < 0 || dx >= size_x )
             return false;
 
         // And Z.
         final int dz = z - location.getBlockZ();
-        return !( dz < 0 || dz >= size );
+        return !( dz < 0 || dz >= size_z );
     }
 
-
     public boolean isInFrame(final World world, final int x, final int y, final int z) {
+        return world != null && isInFrame(world.getUID(), x, y, z);
+    }
+
+    public boolean isInFrame(final UUID world, final int x, final int y, final int z) {
         // Determine if the given location is within the important two layers
         // of the portal.
-        if ( location == null || world == null || !location.getWorld().equals(world) )
+        if ( location == null || world == null || !world.equals(location.getWorldId()) )
             return false;
 
         // Vertical Check
@@ -1197,35 +1226,23 @@ public class ABPortal implements Comparable<ABPortal> {
         final int bz = location.getBlockZ();
 
         // Do we not have corners?
-        if ( dy >= plugin.frameCornerDepth && (x == -1 || x == bx + size) && (z == -1 || z == bz + size) )
+        if ( dy >= plugin.frameCornerDepth && (x == -1 || x == bx + size_x) && (z == -1 || z == bz + size_z) )
             return false;
 
         // Check X
         final int dx = x - bx;
-        if ( dx < -1 || dx > size )
+        if ( dx < -1 || dx > size_x )
             return false;
 
         // And Z.
         final int dz = z - bz;
-        return !(dz < -1 || dz > size);
+        return !(dz < -1 || dz > size_z );
     }
 
 
-    private static void saveLocation(final ConfigurationSection config, final Location loc) {
-        config.set("world", loc.getWorld().getUID().toString());
-        config.set("x", loc.getX());
-        config.set("y", loc.getY());
-        config.set("z", loc.getZ());
-        config.set("yaw", Float.toString(loc.getYaw()));
-        config.set("pitch", Float.toString(loc.getPitch()));
-    }
-
-    private static Location loadLocation(final ConfigurationSection c) {
-        final World w = Bukkit.getWorld(UUID.fromString(c.getString("world")));
-        if (w == null)
-            throw new IllegalArgumentException("Non-existent world.");
-
-        return new Location(w, c.getDouble("x"), c.getDouble("y"), c.getDouble("z"),
+    private static SafeLocation loadLocation(final ConfigurationSection c) {
+        final UUID w = UUID.fromString(c.getString("world"));
+        return new SafeLocation(w, c.getDouble("x"), c.getDouble("y"), c.getDouble("z"),
                 Float.parseFloat(c.getString("yaw")), Float.parseFloat(c.getString("pitch")));
     }
 

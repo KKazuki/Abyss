@@ -46,7 +46,9 @@ permissions:
     abyss.modifiers.emerald_block:
         description: Allows you to use the Emerald Block modifier.
         default: op
-
+    abyss.modifiers.exp_bottle:
+        description: Allows you to use the Bottle o' Enchanting modifier.
+        default: op
 
     abyss.detail.*:
         description: Gives access to all portal details.

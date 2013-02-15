@@ -2,13 +2,13 @@ package me.stendec.abyss;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.onarandombox.MultiverseCore.MultiverseCore;
+import com.onarandombox.MultiverseCore.api.MVWorldManager;
+import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import me.stendec.abyss.commands.*;
 import me.stendec.abyss.events.AbyssPreTeleportEvent;
-import me.stendec.abyss.listeners.BlockListener;
-import me.stendec.abyss.listeners.ItemListener;
-import me.stendec.abyss.listeners.PlayerListener;
-import me.stendec.abyss.listeners.VehicleListener;
+import me.stendec.abyss.listeners.*;
 import me.stendec.abyss.managers.BasicManager;
 import me.stendec.abyss.managers.WorldGuardManager;
 import me.stendec.abyss.modifiers.*;
@@ -70,8 +70,13 @@ public final class AbyssPlugin extends JavaPlugin {
 
     // Portal Dimensions
     public short minimumDepth;
-    public short minimumSize;
-    public short maximumSize;
+
+    public boolean squareOnly;
+    public short minimumSizeX;
+    public short maximumSizeX;
+    public short minimumSizeZ;
+    public short maximumSizeZ;
+
     public short maximumMods;
 
     // Portal Configuration
@@ -110,6 +115,8 @@ public final class AbyssPlugin extends JavaPlugin {
     public float staticSoundVolume;
     public float staticSoundPitch;
 
+    // Modifier Configuration
+    public double slimeBallStrength;
 
     // Portal Storage
     private PortalManager manager;
@@ -119,6 +126,8 @@ public final class AbyssPlugin extends JavaPlugin {
     public HashMap<UUID, Long> portalDestroyTime;
 
     private boolean useWorldGuard;
+    private boolean useMultiverse;
+    private MultiverseCore multiverse;
 
     // Portal Effect Task
     private BukkitTask task;
@@ -132,6 +141,7 @@ public final class AbyssPlugin extends JavaPlugin {
 
     static {
         ConfigurationSerialization.registerClass(FrameInfo.class);
+        ConfigurationSerialization.registerClass(SafeLocation.class);
 
         PortalModifier.register(new BedModifier(), Material.BED);
         PortalModifier.register(new SlimeModifier(), Material.SLIME_BALL);
@@ -142,6 +152,8 @@ public final class AbyssPlugin extends JavaPlugin {
         PortalModifier.register(new BookModifier(), Material.BOOK, Material.BOOK_AND_QUILL, Material.WRITTEN_BOOK);
         PortalModifier.register(new CompassModifier(), Material.COMPASS);
         PortalModifier.register(new EyeOfEnderModifier(), Material.EYE_OF_ENDER);
+        PortalModifier.register(new EmeraldBlockModifier(), Material.EMERALD_BLOCK);
+        PortalModifier.register(new EXPBottleModifier(), Material.EXP_BOTTLE);
     }
 
 
@@ -189,6 +201,7 @@ public final class AbyssPlugin extends JavaPlugin {
         lastId = new HashMap<String, Integer>();
         portalDestroyTime = new HashMap<UUID, Long>();
 
+
         // Load Configuration
         configure();
 
@@ -233,9 +246,8 @@ public final class AbyssPlugin extends JavaPlugin {
             manager = new WorldGuardManager(this, worldGuard);
         }
 
-
-        // Load Portals
-        loadPortals();
+        // Multiverse Stuff
+        enableMultiverse();
 
 
         // Create all the necessary listeners.
@@ -243,6 +255,14 @@ public final class AbyssPlugin extends JavaPlugin {
         new ItemListener(this);
         new PlayerListener(this);
         new VehicleListener(this);
+        new WorldListener(this);
+
+        // Load Portals
+        try {
+            loadPortals();
+        } catch(Exception ex) {
+            getLogger().log(Level.SEVERE, "Error loading portals from file.", ex);
+        }
 
 
         // Start the Task
@@ -401,8 +421,18 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // Portal Dimensions
         minimumDepth = (short) config.getInt("minimum-depth", 2);
-        minimumSize = (short) config.getInt("minimum-size", 2);
-        maximumSize = (short) config.getInt("maximum-size", 4);
+        squareOnly = config.getBoolean("require-square", true);
+
+        final short minimumSize = (short) config.getInt("minimum-size", 2);
+        short maximumSize = (short) config.getInt("maximum-size", 4);
+
+        minimumSizeX = config.isInt("minimum-size-x") ? (short) config.getInt("minimum-size-x") : minimumSize;
+        minimumSizeZ = config.isInt("minimum-size-z") ? (short) config.getInt("minimum-size-z") : minimumSize;
+
+        maximumSizeX = config.isInt("maximum-size-x") ? (short) config.getInt("maximum-size-x") : maximumSize;
+        maximumSizeZ = config.isInt("maximum-size-z") ? (short) config.getInt("maximum-size-z") : maximumSize;
+
+        maximumSize = (short) Math.max(maximumSizeX, maximumSizeZ);
 
         // Wrap this in a contains check so we don't set it if we don't have to.
         if ( config.contains("maximum-modifiers") )
@@ -410,9 +440,14 @@ public final class AbyssPlugin extends JavaPlugin {
         else
             maximumMods = maximumSize;
 
-        if ( minimumSize < 2 ) {
-            log.warning("Invalid minimum-size. Must be at least 2.");
-            minimumSize = 2;
+        if ( minimumSizeX < 2 ) {
+            log.warning("Invalid minimum-size-x. Must be at least 2.");
+            minimumSizeX = 2;
+        }
+
+        if ( minimumSizeZ < 2 ) {
+            log.warning("Invalid minimum-size-z. Must be at least 2.");
+            minimumSizeZ = 2;
         }
 
         if ( minimumDepth < 2 ) {
@@ -420,15 +455,13 @@ public final class AbyssPlugin extends JavaPlugin {
             minimumDepth = 2;
         }
 
-        if ( maximumMods > maximumSize )
-            log.log(Level.CONFIG, "maximum-mods will be limited to maximum-size");
-
-
         // Portal Configuration
         minimumVelocity = config.getDouble("minimum-velocity", 0.15);
         maximumVelocity = config.getDouble("maximum-velocity", 10);
         cooldownTicks = config.getLong("cooldown-ticks", 40);
+
         useWorldGuard = config.getBoolean("use-worldguard", true);
+        useMultiverse = config.getBoolean("use-multiverse", true);
 
         // Rails
         smartRails = config.getBoolean("smart-rails", true);
@@ -580,6 +613,9 @@ public final class AbyssPlugin extends JavaPlugin {
             }
         }
 
+        // Modifier Values
+        slimeBallStrength = config.getInt("slime-ball-strength", 1);
+
         // Save with the defaults we just set. This destroys formatting, but I
         // don't care all that much.
         saveConfig();
@@ -593,8 +629,14 @@ public final class AbyssPlugin extends JavaPlugin {
     public void savePortals() {
         YamlConfiguration config = new YamlConfiguration();
 
-        for(Map.Entry<UUID, ABPortal> entry: manager.entrySet())
-            entry.getValue().save(config.createSection(entry.getKey().toString()));
+        for(Map.Entry<UUID, ABPortal> entry: manager.entrySet()) {
+            final String key = entry.getKey().toString();
+            try {
+                entry.getValue().save(config.createSection(key));
+            } catch(Exception ex) {
+                getLogger().log(Level.SEVERE, "Error saving portal: " + key, ex);
+            }
+        }
 
         if ( ! lastId.isEmpty() ) {
             final ConfigurationSection ids = config.createSection("last-ids");
@@ -627,8 +669,16 @@ public final class AbyssPlugin extends JavaPlugin {
                 }
 
                 // Load the portal and store it.
-                final ABPortal portal = ABPortal.fromConfig(this, uid, config.getConfigurationSection(key));
-                manager.add(portal);
+                ABPortal portal = null;
+                try {
+                    portal = ABPortal.fromConfig(this, uid, config.getConfigurationSection(key));
+                } catch(Exception ex) {
+                    getLogger().log(Level.SEVERE, "Error loading portal: " + key, ex);
+                    continue;
+                }
+
+                if ( portal != null )
+                    manager.add(portal);
             }
 
             if ( config.isConfigurationSection("last-ids") ) {
@@ -653,6 +703,9 @@ public final class AbyssPlugin extends JavaPlugin {
         return (WorldGuardPlugin) plugin;
     }
 
+    public MultiverseCore getMultiverse() {
+        return multiverse;
+    }
 
     private CommandMap getCommandMap() {
         final PluginManager m = getServer().getPluginManager();
@@ -670,6 +723,29 @@ public final class AbyssPlugin extends JavaPlugin {
         } catch(final Exception e) { }
 
         return null;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Multiverse Code
+    ///////////////////////////////////////////////////////////////////////////
+
+    public void enableMultiverse() {
+        if ( ! useMultiverse )
+            return;
+
+        PluginManager pm = getServer().getPluginManager();
+        multiverse = (MultiverseCore) pm.getPlugin("Multiverse-Core");
+        if ( multiverse != null && ! pm.isPluginEnabled(multiverse) )
+            multiverse = null;
+
+        if ( multiverse != null )
+            getLogger().fine("Using Multiverse.");
+    }
+
+
+    public void disableMultiverse() {
+        multiverse = null;
+        getLogger().fine("Not using Multiverse anymore.");
     }
 
 
@@ -843,7 +919,7 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
 
-    public HashSet<Material> validLayer(final Location location, final short depth, final int size) {
+    public HashSet<Material> validLayer(final Location location, final short depth, final int size_x, final int size_z) {
         /* Determine if there's a valid layer at the location. This is assuming
            that the provided location is the lowest X,Z pair of the inside of
            the portal. */
@@ -852,8 +928,8 @@ public final class AbyssPlugin extends JavaPlugin {
             return null;
 
         // Check the portal blocks.
-        for(double x=0; x < size; x++) {
-            for(double z=0; z < size; z++) {
+        for(double x=0; x < size_x; x++) {
+            for(double z=0; z < size_z; z++) {
                 if (!validLiquid(location.clone().add(x, 0, z)))
                     return null;
             }
@@ -865,9 +941,9 @@ public final class AbyssPlugin extends JavaPlugin {
         // Now, check the frame blocks.
         final double min, max;
         if ( depth < frameCornerDepth ) {
-            min = -1; max = size + 1;
+            min = -1; max = size_x + 1;
         } else {
-            min = 0; max = size;
+            min = 0; max = size_x;
         }
 
         for(double x = min; x < max; x++) {
@@ -877,21 +953,21 @@ public final class AbyssPlugin extends JavaPlugin {
 
             out.add(block.getType());
 
-            block = location.clone().add(x, 0, size).getBlock();
+            block = location.clone().add(x, 0, size_z).getBlock();
             if ( !validFrameBlock(block) )
                 return null;
 
             out.add(block.getType());
         }
 
-        for(double z=0; z < size; z++) {
+        for(double z=0; z < size_z; z++) {
             Block block = location.clone().add(-1, 0, z).getBlock();
             if ( !validFrameBlock(block) )
                 return null;
 
             out.add(block.getType());
 
-            block = location.clone().add(size, 0, z).getBlock();
+            block = location.clone().add(size_x, 0, z).getBlock();
             if ( !validFrameBlock(block) )
                 return null;
 
@@ -933,7 +1009,7 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
 
-    public Location findRoot(Location location, final int size) {
+    public Location findRoot(Location location) {
         if (location == null)
             return null;
 
@@ -946,8 +1022,8 @@ public final class AbyssPlugin extends JavaPlugin {
         if (!validLiquid(block))
             return null;
 
-        // Find the lowest X and Y water block for this portal hole.
-        int i = size - 1;
+        // Find the lowest X and Z water block for this portal hole.
+        int i = 128 - 1;
         while(validLiquid(location.subtract(1, 0, 0))) {
             i -= 1;
             if ( i < 0 )
@@ -955,7 +1031,7 @@ public final class AbyssPlugin extends JavaPlugin {
         }
         location.add(1, 0, 0);
 
-        i = size - 1;
+        i = 128 - 1;
         while(validLiquid(location.subtract(0, 0, 1))) {
             i -= 1;
             if ( i < 0 )
@@ -972,23 +1048,7 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
 
-    public boolean validateLocation(final Location location, final int size) {
-        if (location == null)
-            return false;
-
-        // Assume we've been given the root location already. Make sure
-        // there's not an existing portal.
-        final ABPortal portal = manager.getByRoot(location);
-        if ( portal != null )
-            return false;
-
-        // Now, check the depth of the portal. If it has any depth, it's a
-        // valid portal location.
-        return ( getDepthAt(location, size) >= minimumDepth );
-    }
-
-
-    public short getDepthAt(final Location location, final int size) {
+    public short getDepthAt(final Location location, final int size_x, final int size_z) {
         if (location == null)
             return 0;
 
@@ -999,7 +1059,7 @@ public final class AbyssPlugin extends JavaPlugin {
         HashSet<Material> materials = new HashSet<Material>();
 
         while(loc.getBlockY() > 0) {
-            HashSet<Material> out = validLayer(loc, depth, size);
+            HashSet<Material> out = validLayer(loc, depth, size_x, size_z);
             if ( out == null )
                 break;
 
@@ -1019,8 +1079,8 @@ public final class AbyssPlugin extends JavaPlugin {
     // Portal Selection Code
     ///////////////////////////////////////////////////////////////////////////
 
-    public ArrayList<ABPortal> getDestinations(final ABPortal portal) {
-        if ( portal == null )
+    public ArrayList<ABPortal> getDestinations(final ABPortal portal, boolean filter_invalid) {
+        if ( portal == null || portal.getLocation() == null )
             return null;
 
         final ArrayList<ABPortal> out;
@@ -1029,10 +1089,31 @@ public final class AbyssPlugin extends JavaPlugin {
             // Use the specific destination exclusively.
             out = new ArrayList<ABPortal>();
             final ABPortal destination = manager.getByNetworkId(portal.network, portal.color, portal.owner, portal.destination);
-            if ( destination != null && destination.valid )
+            if ( destination != null && (!filter_invalid || destination.valid) )
                 out.add(destination);
         } else {
-            out = manager.getNetworkForDestination(portal);
+            out = manager.getNetworkForDestination(portal, filter_invalid);
+        }
+
+        // If we have multiverse, do multiverse permissions checks.
+        if ( out != null && out.size() > 0 && multiverse != null ) {
+            MVWorldManager mvman = multiverse.getMVWorldManager();
+            MultiverseWorld world = mvman.getMVWorld(portal.getLocation().getWorld());
+            List<String> blacklist = (world != null) ? world.getWorldBlacklist() : null;
+            if ( blacklist != null && blacklist.size() > 0 ) {
+                for(Iterator<ABPortal> it = out.iterator(); it.hasNext(); ) {
+                    final ABPortal p = it.next();
+                    final World w = p.getLocation().getWorld();
+                    if ( w == null ) {
+                        it.remove();
+                        continue;
+                    }
+
+                    final MultiverseWorld mvw = mvman.getMVWorld(w);
+                    if ( blacklist.contains(mvw.getName()) )
+                        it.remove();
+                }
+            }
         }
 
         return out;
@@ -1047,27 +1128,18 @@ public final class AbyssPlugin extends JavaPlugin {
     private static ArrayList<ABPortal> empty = new ArrayList<ABPortal>();
 
     public ArrayList<ABPortal> protectBlock(final Block block) {
-        final Location loc = block.getLocation();
-        final int x = loc.getBlockX();
-        final int z = loc.getBlockZ();
-        final int y = loc.getBlockY();
-
         // Get all the portals near this block.
-        final ArrayList<ABPortal> portals = manager.getNear(loc);
-        if ( portals == null )
+        final ArrayList<ABPortal> portals = manager.getNear(block.getLocation());
+        if ( portals == null || portals.size() == 0 )
             return empty;
+
+        // Convenience variables.
+        final UUID world = block.getWorld().getUID();
+        final int x = block.getX(), y = block.getY(), z = block.getZ();
 
         // Iterate through all the portals, making sure we can do this.
         for(final ABPortal portal: portals) {
-            final int py = portal.getLocation().getBlockY();
-            if ( y <= py && y > py - frameCornerDepth )
-                // Protect the important layers of the frame.
-                return null;
-
-            final Location min = portal.getMinimumLocation();
-            final Location max = portal.getMaximumLocation();
-
-            if ( y <= py && y > py - 2 && !((x == min.getBlockX() || x == max.getBlockX()) && (z == min.getBlockZ() || z == max.getBlockZ())) )
+            if ( portal.isInFrame(world, x, y, z) )
                 return null;
         }
 
@@ -1131,7 +1203,7 @@ public final class AbyssPlugin extends JavaPlugin {
         }
 
         // Get a list of destination portals.
-        final ArrayList<ABPortal> destinations = getDestinations(portal);
+        final ArrayList<ABPortal> destinations = getDestinations(portal, true);
         if ( destinations == null || destinations.size() == 0 ) {
             if ( entity instanceof Player ) {
                 final ColorBuilder cb = t();
@@ -1148,9 +1220,16 @@ public final class AbyssPlugin extends JavaPlugin {
         }
 
         // Iterate through the destinations, trying to teleport until it succeeds.
+        String message = null;
+
         if ( destinations.size() > 0 ) {
             for(final ABPortal destination: destinations) {
-                final Entity ent = doTeleport(entity, portal, destination, to, delta);
+                Entity ent = null;
+                try {
+                    ent = doTeleport(entity, portal, destination, to, delta);
+                } catch(PortalModifier.Message msg) {
+                    message = msg.getMessage();
+                }
                 if ( ent != null )
                     return (ent.equals(entity)) ? ent.getLocation() : null;
             }
@@ -1158,7 +1237,9 @@ public final class AbyssPlugin extends JavaPlugin {
 
         if ( entity instanceof Player ) {
             final ColorBuilder cb = t();
-            if ( portal.destination != 0 )
+            if ( message != null && message.length() > 0 )
+                cb.red(message);
+            else if ( portal.destination != 0 )
                 cb.red("The destination is unreachable.");
             else if ( limitDistance )
                 cb.red("No valid destinations within range.");
@@ -1171,9 +1252,12 @@ public final class AbyssPlugin extends JavaPlugin {
     }
 
     @SuppressWarnings("unchecked")
-    public Entity doTeleport(Entity entity, final ABPortal from, final ABPortal to, final Location pos, Vector delta) {
+    public Entity doTeleport(Entity entity, final ABPortal from, final ABPortal to, final Location pos, Vector delta) throws PortalModifier.Message {
         // Get the destination location.
-        Location dest = to.getCenter();
+        Location dest = to.getCenter().getLocation();
+        if ( dest == null )
+            return null;
+
         delta = delta.clone();
 
         // Apply the position's yaw and pitch to destination.
@@ -1182,8 +1266,8 @@ public final class AbyssPlugin extends JavaPlugin {
 
         // If we have a source portal, do a bunch of stuff.
         if ( from != null ) {
-            Location fc = from.getCenter();
-            final Vector offset = pos.clone().subtract(fc).toVector();
+            SafeLocation fc = from.getCenter();
+            final Vector offset = pos.clone().subtract(fc.getX(), fc.getY(), fc.getZ()).toVector();
 
             // If either rangeMultiplier is infinite, don't deal with it.
             if ( limitDistance && !Double.isInfinite(from.rangeMultiplier) && !Double.isInfinite(to.rangeMultiplier) ) {
@@ -1193,14 +1277,14 @@ public final class AbyssPlugin extends JavaPlugin {
             }
 
             // Adjust for relative size.
-            final int to_size = to.getSize();
-            final int from_size = from.getSize();
+            final int to_sx = to.getSizeX(), to_sz = to.getSizeZ();
+            final int from_sx = from.getSizeX(), from_sz = from.getSizeZ();
 
-            if ( from_size != to_size ) {
-                final float multiplier = ((float) to_size) / from_size;
-                offset.setX(offset.getX() * multiplier);
-                offset.setZ(offset.getZ() * multiplier);
-            }
+            if ( to_sx != from_sx )
+                offset.setX(offset.getX() * (((float) to_sx) / from_sx));
+
+            if ( to_sz != from_sz )
+                offset.setZ(offset.getZ() * (((float) to_sz) / from_sz));
 
             // Determine the relative rotation.
             // 1 = 90, -3 = -270, 2 = 180, -2 = -180, 3 = 270, -1 = -90, 0 = 0
@@ -1290,8 +1374,8 @@ public final class AbyssPlugin extends JavaPlugin {
                 bf = BlockUtils.toBlockFace(to.getRotation()).getOppositeFace();
 
             Block block = dest.getBlock().getRelative(bf);
-            while ( to.isNearPortal(block.getLocation()) ) {
-                if ( isRail(block.getType()) ) {
+            while ( to.isNearPortal(block) ) {
+                if ( BlockUtils.isRail(block) ) {
                     // We've got a rail! Move to it and be done.
                     dest = block.getLocation();
                     delta = BlockUtils.toVector(bf, delta.length());
@@ -1326,10 +1410,12 @@ public final class AbyssPlugin extends JavaPlugin {
             // Now, try to execute the modifier.
             try {
                 okay = modifier.preTeleport(from, to, info, entity, dest, delta);
+            } catch(PortalModifier.Message msg) {
+                throw msg;
             } catch(IllegalArgumentException ex) {
                 if ( ! info.flags.containsKey("silent") && entity instanceof Player )
                     t().red("Portal Modifier ").darkgray("[").darkred(info.item.getType().name()).
-                            darkgray("]").red("Configuration Error").lf().
+                            darkgray("]").red(" Configuration Error").lf().
                         gray("    ").append(ex.getMessage()).send((Player) entity);
             } catch(Exception ex) {
                 getLogger().log(Level.SEVERE, "Exception in Portal Modifier [" + info.item.getType().name() + "] Pre-Teleportation Check", ex);
@@ -1366,7 +1452,11 @@ public final class AbyssPlugin extends JavaPlugin {
                 return null;
 
             // If we can't teleport the passenger, abort.
-            Entity ent = doTeleport(passenger, from, to, passenger.getLocation(), delta);
+            Entity ent = null;
+            try {
+                ent = doTeleport(passenger, from, to, passenger.getLocation(), delta);
+            } catch(PortalModifier.Message msg) { }
+
             if ( ent == null ) {
                 // Put the passenger back first.
                 entity.setPassenger(passenger);
@@ -1446,7 +1536,7 @@ public final class AbyssPlugin extends JavaPlugin {
             } catch(IllegalArgumentException ex) {
                 if ( ! info.flags.containsKey("silent") && entity instanceof Player )
                     t().red("Portal Modifier ").darkgray("[").darkred(info.item.getType().name()).
-                            darkgray("]").red("Configuration Error").lf().
+                            darkgray("]").red(" Configuration Error").lf().
                             gray("    ").append(ex.getMessage()).send((Player) entity);
             } catch(Exception ex) {
                 getLogger().log(Level.SEVERE, "Exception in Portal Modifier [" + info.item.getType().name() + "] Post-Teleportation Event", ex);
@@ -1494,7 +1584,7 @@ public final class AbyssPlugin extends JavaPlugin {
                 if ( portal == null )
                     continue;
 
-                final Location center = portal.getCenter();
+                final SafeLocation center = portal.getCenter();
                 if (! center.getChunk().isLoaded() )
                     continue;
 
@@ -1506,7 +1596,9 @@ public final class AbyssPlugin extends JavaPlugin {
 
                 final World w = center.getWorld();
                 int min_y = portal.getMinimumLocation().getBlockY();
-                final double size = ((double) portal.getSize() / 2) - 0.5;
+
+                final float size_x = (portal.getSizeX() / 2f) - 0.5f;
+                final float size_z = (portal.getSizeZ() / 2f) - 0.5f;
 
                 if ( ! plugin.staticEffectFullHeight ) {
                     center.subtract(0, (portal.depth / 2), 0);
@@ -1515,14 +1607,14 @@ public final class AbyssPlugin extends JavaPlugin {
 
                 while ( center.getBlockY() > min_y ) {
                     center.subtract(0, 2, 0);
-                    final Location l;
+                    final SafeLocation l;
                     if ( plugin.staticEffectCentered ) {
                         l = center;
                     } else {
-                        l = center.clone().add((random.nextDouble() - 0.5) * size, 1, (random.nextDouble() - 0.5) * size);
+                        l = center.clone((random.nextDouble() - 0.5) * size_x, 1, (random.nextDouble() - 0.5) * size_z);
                     }
 
-                    w.playEffect(l, plugin.staticEffect, plugin.staticEffectData);
+                    w.playEffect(l.getLocation(), plugin.staticEffect, plugin.staticEffectData);
                 }
 
                 portal.effectSound--;
@@ -1530,22 +1622,9 @@ public final class AbyssPlugin extends JavaPlugin {
                     continue;
 
                 portal.effectSound = (short) (random.nextInt(5) + 6);
-                w.playSound(portal.getCenter(), plugin.staticSound, plugin.staticSoundVolume, plugin.staticSoundPitch);
+                w.playSound(portal.getCenter().getLocation(), plugin.staticSound, plugin.staticSoundVolume, plugin.staticSoundPitch);
             }
         }
     }
-
-
-    public static boolean isRail(final Material mat) {
-        switch(mat) {
-            case RAILS:
-            case POWERED_RAIL:
-            case DETECTOR_RAIL:
-                return true;
-            default:
-                return false;
-        }
-    }
-
 
 }

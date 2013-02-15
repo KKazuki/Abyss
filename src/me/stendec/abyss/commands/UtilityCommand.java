@@ -4,7 +4,9 @@ import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.ModInfo;
+import me.stendec.abyss.util.SafeLocation;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -108,10 +110,11 @@ public class UtilityCommand extends ABCommand {
 
         // If we've got the block, just set it.
         if ( block != null ) {
-            info.location = block.getLocation();
+            final Location loc = block.getLocation();
+            info.location = new SafeLocation(loc);
 
             // Play an effect to make it more noticeable.
-            block.getWorld().playEffect(info.location, plugin.portalEffect, plugin.portalEffectData);
+            loc.getWorld().playEffect(loc, plugin.portalEffect, plugin.portalEffectData);
 
             t().darkgreen("The Utility Block of Modifier %02d of ", index).append(portal.getDisplayName()).
                 darkgreen(" was set to: ").darkgray(ChatColor.RESET, "%d, %d, %d [%s]",

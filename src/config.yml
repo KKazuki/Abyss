@@ -50,6 +50,7 @@ entity-type-whitelist:
   - EnderCrystal
   - SPLASH_POTION
   - EGG
+use-multiverse: true
 use-worldguard: true
 
 
@@ -63,6 +64,7 @@ network-color: WHITE
 
 
 minimum-depth: 2
+require-square: true
 minimum-size: 2
 maximum-size: 4
 
@@ -95,3 +97,6 @@ smart-rails: true
 limit-distance: true
 base-range: 50
 depth-multiplier: 25
+
+
+slime-ball-strength: 1

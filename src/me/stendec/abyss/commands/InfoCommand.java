@@ -6,8 +6,8 @@ import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.ModInfo;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
+import me.stendec.abyss.util.SafeLocation;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
@@ -35,7 +35,7 @@ public class InfoCommand extends ABCommand {
             return false;
         }
 
-        final Location center = portal.getCenter();
+        final SafeLocation center = portal.getCenter();
 
         final ItemMeta im = portal.network.getItemMeta();
         String network = ParseUtils.prettyName(portal.network);
@@ -60,7 +60,10 @@ public class InfoCommand extends ABCommand {
                 center.getBlockX(), center.getBlockY(), center.getBlockZ(), center.getWorld().getName()).send(sender);
 
         // Portal Depth, Size, and Rotation
-        t().gray(ChatColor.WHITE, "Depth: %-4d  Size: %-4d  Rotation: %s", portal.depth, portal.getSize(), portal.getRotation().name()).send(sender);
+        final int sx = portal.getSizeX(), sz = portal.getSizeZ();
+        String size = (false && sx == sz) ? String.valueOf(sx) : String.format("%dx%d", sx, sz);
+
+        t().gray(ChatColor.WHITE, "Depth: %-4d  Size: %-4s  Rotation: %s", portal.depth, size, portal.getRotation().name()).send(sender);
 
         // Other Stuff
         t().gray(ChatColor.WHITE, "Closed: %-5s  Velocity: %4.2f  Range: %4.2f", !portal.valid, portal.velocityMultiplier, portal.getRange()).send(sender);

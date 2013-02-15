@@ -3,6 +3,7 @@ package me.stendec.abyss.modifiers;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.ModInfo;
 import me.stendec.abyss.PortalModifier;
+import me.stendec.abyss.util.SafeLocation;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -13,7 +14,7 @@ import org.bukkit.inventory.ItemStack;
 
 public class BedModifier extends PortalModifier {
 
-    private static boolean canSpawnAt(final Location loc) {
+    private static boolean canSpawnAt(final SafeLocation loc) {
         return canSpawnAt(loc.getBlock());
     }
 
@@ -26,7 +27,7 @@ public class BedModifier extends PortalModifier {
         if (info.location == null)
             info.updateLocation();
 
-        final Location loc = info.location.clone();
+        final SafeLocation loc = info.location.clone();
         final int maxHeight = loc.getWorld().getMaxHeight();
 
         // Move up.
@@ -34,10 +35,10 @@ public class BedModifier extends PortalModifier {
             loc.add(0, 1, 0);
 
         if (!canSpawnAt(loc))
-            throw new IllegalArgumentException("Please set the Utility Block for this modifier to a valid spawn location before setting it.");
+            t().red("Warning: ").reset("Be sure to set the Utility Block for this modifier before using it.").send(player);
 
         if ( !info.location.equals(loc) && !info.flags.containsKey("*moved") ) {
-            info.flags.put("*moved", String.format("%f;%f;%f", info.location.getX(), info.location.getY(), info.location.getZ()));
+            info.flags.put("*moved", String.format("%f:%f:%f", info.location.getX(), info.location.getY(), info.location.getZ()));
             info.location = loc;
         }
 
@@ -48,9 +49,9 @@ public class BedModifier extends PortalModifier {
         // Clear the location if it was moved.
         final String moved = info.flags.get("*moved");
         if ( moved != null ) {
-            if ( info.location != null && moved.contains(";") ) {
-                final String[] parts = moved.split(";");
-                final Location loc = info.location;
+            if ( info.location != null && moved.contains(":") ) {
+                final String[] parts = moved.split(":");
+                final SafeLocation loc = info.location;
                 loc.setX(Double.parseDouble(parts[0]));
                 loc.setY(Double.parseDouble(parts[1]));
                 loc.setZ(Double.parseDouble(parts[2]));
@@ -73,8 +74,10 @@ public class BedModifier extends PortalModifier {
             return;
 
         // Make sure the location is valid before we set the spawn point.
-        final Location loc = info.location;
-        if (!canSpawnAt(loc))
+        final Location loc = info.location.getLocation();
+        if ( loc == null )
+            throw new IllegalArgumentException("Cannot get spawn location.");
+        if ( !canSpawnAt(loc.getBlock()) )
             throw new IllegalArgumentException(String.format("Invalid spawn location: (%d, %d, %d)", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
 
         final Player player = (Player) entity;

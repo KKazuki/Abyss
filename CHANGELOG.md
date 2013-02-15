@@ -1,3 +1,19 @@
+## Version 6:
+
+### Added ###
+ * Portals may be any dimensions and not simply square.
+ * Abyss can now load world scale and blacklist information from Multiverse.
+ * Emerald Block Portal Modifier, which uses Vault to interact with economy mods.
+ * Bottle 'o Enchanting Portal Modifier, which lets you make portals cost experience to use, or require a minimum experience level.
+ * ``require-square`` configuration option for enforcing portal square-ness, defaults to true.
+ * ``use-multiverse`` configuration option for enabling Multiverse support, defaults to true.
+ * ``slime-ball-strength`` configuration option for modifying slime ball strength, defaults to 1.0.
+
+### Fixed ###
+ * Portals now use SafeLocations, which can safely exist even when the world they're within isn't loaded.
+ * Exceptions during startup are now trapped, ensuring problems with the plugins file won't prevent the plugin from loading.
+
+
 ## Version 5: February 13, 2013 ##
 
 ### Added ###

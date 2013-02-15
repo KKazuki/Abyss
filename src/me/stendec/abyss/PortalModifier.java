@@ -59,7 +59,7 @@ public abstract class PortalModifier {
         return true;
     }
 
-    public boolean preTeleport(final ABPortal from, final ABPortal portal, final ModInfo info, final Entity entity, final Location destination, final Vector velocity) {
+    public boolean preTeleport(final ABPortal from, final ABPortal portal, final ModInfo info, final Entity entity, final Location destination, final Vector velocity) throws Message {
         return true;
     }
 
@@ -71,5 +71,22 @@ public abstract class PortalModifier {
 
     protected static ColorBuilder t() { return new ColorBuilder(); }
     protected static ColorBuilder t(final String string) { return new ColorBuilder(string); }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Message for Players
+    ///////////////////////////////////////////////////////////////////////////
+
+    public class Message extends Exception {
+
+        public final String message;
+
+        public Message(final String message) {
+            this.message = message;
+        }
+
+        public String getMessage() { return message; }
+
+    }
+
 
 }

@@ -7,8 +7,12 @@ import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.PortalManager;
 import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
+import me.stendec.abyss.util.SafeLocation;
 import org.apache.commons.lang.StringUtils;
-import org.bukkit.*;
+import org.bukkit.ChatColor;
+import org.bukkit.DyeColor;
+import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -170,7 +174,7 @@ public class ListCommand extends ABCommand {
             else if ( p.network.getItemMeta().hasDisplayName() )
                 nw = p.network.getItemMeta().getDisplayName() + " (" + nw + ")";
 
-            final Location center = p.getCenter();
+            final SafeLocation center = p.getCenter();
 
             biggest_xz = Math.max(Math.max(biggest_xz, Math.abs(center.getBlockX())), Math.abs(center.getBlockZ()));
             biggest_y = Math.max(biggest_y, center.getBlockY());
@@ -195,7 +199,7 @@ public class ListCommand extends ABCommand {
                 nw = t(im.getDisplayName()).gray(" (").reset(nw).gray(")").toString();
             }
 
-            final Location center = p.getCenter();
+            final SafeLocation center = p.getCenter();
             if ( p.valid )
                 out.white("+ ").bold(p.getName());
             else

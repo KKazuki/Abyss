@@ -3,6 +3,7 @@ package me.stendec.abyss;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemFrame;
@@ -115,6 +116,12 @@ public abstract class PortalManager {
         return allPortals.size();
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // World Loading
+    ///////////////////////////////////////////////////////////////////////////
+
+    public abstract void worldLoad(final World world);
+    public abstract void worldUnload(final World world);
 
     ///////////////////////////////////////////////////////////////////////////
     // Portal Network Access

@@ -3,9 +3,11 @@ package me.stendec.abyss.commands;
 import me.stendec.abyss.ABCommand;
 import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
+import me.stendec.abyss.PortalModifier;
 import org.bukkit.ChatColor;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.util.Vector;
@@ -135,7 +137,15 @@ public class TeleportCommand extends ABCommand {
         }
 
         // Attempt to teleport the player.
-        if ( plugin.doTeleport(player, null, portal, player.getLocation(), v) != null ) {
+        Entity ent = null;
+        try {
+            ent = plugin.doTeleport(player, null, portal, player.getLocation(), v);
+        } catch(PortalModifier.Message msg) {
+            if ( player.equals(sender) )
+                sender.sendMessage(msg.getMessage());
+        }
+
+        if ( ent != null ) {
             if ( player.equals(sender) )
                 t().darkgreen("You were teleported to ").append(portal.getDisplayName()).
                         darkgreen(" successfully.").send(sender);

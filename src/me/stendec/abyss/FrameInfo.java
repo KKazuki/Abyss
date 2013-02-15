@@ -1,5 +1,6 @@
 package me.stendec.abyss;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -18,8 +19,7 @@ public class FrameInfo implements ConfigurationSerializable {
         NETWORK, COLOR, ID1, ID2, DEST1, DEST2, MOD
     }
 
-    public World world;
-
+    public UUID worldId;
     private int chunk_x;
     private int chunk_z;
 
@@ -37,7 +37,7 @@ public class FrameInfo implements ConfigurationSerializable {
         Location loc = frame.getLocation();
         Chunk chunk = loc.getChunk();
 
-        world = chunk.getWorld();
+        worldId = chunk.getWorld().getUID();
         chunk_x = chunk.getX();
         chunk_z = chunk.getZ();
 
@@ -51,6 +51,7 @@ public class FrameInfo implements ConfigurationSerializable {
     public ItemFrame getFrame(boolean force) {
         ItemFrame frame = (instance != null) ? instance.get() : null;
         if (frame == null || !frame.isValid()) {
+            final World world = (worldId != null) ? Bukkit.getWorld(worldId) : null;
             if (world != null) {
                 Chunk chunk = world.getChunkAt(chunk_x, chunk_z);
                 if (!chunk.isLoaded() && force)
