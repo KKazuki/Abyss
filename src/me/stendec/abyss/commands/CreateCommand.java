@@ -84,6 +84,14 @@ public class CreateCommand extends ABCommand {
             if ( size_x != -1 ) {
                 valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
 
+                if ( ! valid ) {
+                    final short t = size_z;
+                    size_z = size_x;
+                    size_x = t;
+
+                    valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+                }
+
             } else if ( plugin.squareOnly ) {
                 final int min = Math.max(plugin.minimumSizeX, plugin.minimumSizeZ);
                 final int max = Math.min(plugin.maximumSizeX, plugin.maximumSizeZ);

@@ -265,10 +265,6 @@ public final class AbyssPlugin extends JavaPlugin {
         }
 
 
-        // Start the Task
-        task = getServer().getScheduler().runTaskTimer(this, new PortalEffect(this), 20L, 40L);
-
-
         // Try to update.
         updateMessage = null;
         if ( autoUpdate != 0 )
@@ -619,6 +615,15 @@ public final class AbyssPlugin extends JavaPlugin {
         // Save with the defaults we just set. This destroys formatting, but I
         // don't care all that much.
         saveConfig();
+
+
+        // Should we be running the static task?
+        if ( useStaticEffect && task == null ) {
+            task = getServer().getScheduler().runTaskTimer(this, new PortalEffect(this), 20L, 40L);
+        } else if ( !useStaticEffect && task != null ) {
+            task.cancel();
+            task = null;
+        }
     }
 
 
