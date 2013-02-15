@@ -1,4 +1,4 @@
-## Version 6:
+## Version 6: February 14, 2013 ##
 
 ### Added ###
  * Portals may be any dimensions and not simply square.
@@ -12,6 +12,7 @@
 ### Fixed ###
  * Portals now use SafeLocations, which can safely exist even when the world they're within isn't loaded.
  * Exceptions during startup are now trapped, ensuring problems with the plugins file won't prevent the plugin from loading.
+ * ``use-static-effect`` actually does something now.
 
 
 ## Version 5: February 13, 2013 ##
