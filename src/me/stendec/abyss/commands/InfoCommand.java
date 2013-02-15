@@ -9,6 +9,7 @@ import me.stendec.abyss.util.ParseUtils;
 import me.stendec.abyss.util.SafeLocation;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -55,9 +56,15 @@ public class InfoCommand extends ABCommand {
         t().gray(ChatColor.WHITE, "Network: %s [%s]", network, portal.color.name()).send(sender);
 
         // Center Coordinates
-        if ( sender.hasPermission("abyss.detail.location") )
+        if ( sender.hasPermission("abyss.detail.location") ) {
+            final World w = center.getWorld();
+            final String wname = (w != null) ? w.getName() :
+                    (sender.hasPermission("abyss.detail.uuid") ? center.getWorldId().toString() :
+                            ChatColor.DARK_GRAY + "Unknown World");
+
             t().gray("Center: ").darkgray(ChatColor.WHITE, "%d, %d, %d [%s]",
-                center.getBlockX(), center.getBlockY(), center.getBlockZ(), center.getWorld().getName()).send(sender);
+                center.getBlockX(), center.getBlockY(), center.getBlockZ(), wname).send(sender);
+        }
 
         // Portal Depth, Size, and Rotation
         final int sx = portal.getSizeX(), sz = portal.getSizeZ();

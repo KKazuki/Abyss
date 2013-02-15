@@ -9,13 +9,10 @@ import me.stendec.abyss.util.ColorBuilder;
 import me.stendec.abyss.util.ParseUtils;
 import me.stendec.abyss.util.SafeLocation;
 import org.apache.commons.lang.StringUtils;
-import org.bukkit.ChatColor;
-import org.bukkit.DyeColor;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -151,11 +148,14 @@ public class ListCommand extends ABCommand {
 
         final ArrayList<ABPortal> portals = new ArrayList<ABPortal>();
 
+        int longest_name = 0;
         int longest_color = 0;
         int longest_net = 0;
         int biggest_xz = 0;
         int biggest_y = 0;
         int total = 0;
+
+        final boolean console = sender instanceof ConsoleCommandSender;
 
         for(Map.Entry<UUID, ABPortal> entry: manager.entrySet()) {
             ABPortal p = entry.getValue();
@@ -168,18 +168,22 @@ public class ListCommand extends ABCommand {
             else if ( color != null && color != p.color )
                 continue;
 
-            String nw = ParseUtils.prettyName(p.network);
-            if ( p.network.getType() == Material.SKULL_ITEM && p.network.getDurability() == 3 )
-                nw = "Personal";
-            else if ( p.network.getItemMeta().hasDisplayName() )
-                nw = p.network.getItemMeta().getDisplayName() + " (" + nw + ")";
+            if ( console ) {
+                String nw = ParseUtils.prettyName(p.network);
+                if ( p.network.getType() == Material.SKULL_ITEM && p.network.getDurability() == 3 )
+                    nw = "Personal";
+                else if ( p.network.getItemMeta().hasDisplayName() )
+                    nw = p.network.getItemMeta().getDisplayName() + " (" + nw + ")";
 
-            final SafeLocation center = p.getCenter();
+                final SafeLocation center = p.getCenter();
 
-            biggest_xz = Math.max(Math.max(biggest_xz, Math.abs(center.getBlockX())), Math.abs(center.getBlockZ()));
-            biggest_y = Math.max(biggest_y, center.getBlockY());
-            longest_color = Math.max(longest_color, p.color.name().length());
-            longest_net = Math.max(longest_net, nw.length());
+                biggest_xz = Math.max(Math.max(biggest_xz, Math.abs(center.getBlockX())), Math.abs(center.getBlockZ()));
+                biggest_y = Math.max(biggest_y, center.getBlockY());
+                longest_color = Math.max(longest_color, p.color.name().length());
+                longest_net = Math.max(longest_net, nw.length());
+                longest_name = Math.max(longest_name, p.getName().length());
+            }
+
             portals.add(p);
         }
 
@@ -189,6 +193,7 @@ public class ListCommand extends ABCommand {
         biggest_y = String.valueOf(biggest_y).length() + 1;
 
         final String fmt = String.format(" [%%%ds|%%-%ds] @ %%+%dd, %%+%dd, %%+%dd, %%s", longest_net, longest_color, biggest_xz, biggest_y, biggest_xz);
+        final String fmt_name = String.format("%%-%ds", longest_name);
 
         for(final ABPortal p: portals) {
             final ItemMeta im = p.network.getItemMeta();
@@ -200,20 +205,27 @@ public class ListCommand extends ABCommand {
             }
 
             final SafeLocation center = p.getCenter();
+            String name = p.getName();
+            if ( console )
+                name = String.format(fmt_name, name);
+
             if ( p.valid )
-                out.white("+ ").bold(p.getName());
+                out.white("+ ").bold(name);
             else
-                out.darkgray("- ").white().bold(p.getName());
+                out.darkgray("- ").white().bold(name);
 
             // Display less in-game.
-            if (! (sender instanceof Player) ) {
+            if ( console ) {
                 // Adjust network length based on the longest length.
                 int bare = ChatColor.stripColor(nw).length();
                 if ( bare < longest_net )
                     nw = StringUtils.repeat(" ", longest_net - bare) + nw;
 
+                final World w = center.getWorld();
+                final String wname = (w != null) ? w.getName() : center.getWorldId().toString();
+
                 out.darkgray(ChatColor.RESET, fmt, nw, ParseUtils.prettyName(p.color), center.getBlockX(),
-                        center.getBlockY(), center.getBlockZ(), center.getWorld().getName());
+                        center.getBlockY(), center.getBlockZ(), wname);
 
             } else {
                 out.reset(" ").append(nw).darkgray(" [").reset(ParseUtils.prettyName(p.color)).darkgray("]");

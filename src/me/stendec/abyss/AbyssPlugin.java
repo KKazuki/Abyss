@@ -1585,7 +1585,8 @@ public final class AbyssPlugin extends JavaPlugin {
                     continue;
 
                 final SafeLocation center = portal.getCenter();
-                if (! center.getChunk().isLoaded() )
+                final Chunk c = center.getChunk();
+                if ( c == null || !c.isLoaded() )
                     continue;
 
                 portal.effect--;
