@@ -136,6 +136,7 @@ public final class AbyssPlugin extends JavaPlugin {
     public HashSet<EntityType> entityTypeWhitelist;
 
     // Metrics
+    private boolean useMetrics;
     private Metrics metrics;
 
     // Command Storage
@@ -275,7 +276,8 @@ public final class AbyssPlugin extends JavaPlugin {
 
 
         // And while we're at it, lets get some metrics!
-        startMetrics();
+        if ( useMetrics )
+            startMetrics();
 
 
     }
@@ -476,6 +478,7 @@ public final class AbyssPlugin extends JavaPlugin {
             }
         }
 
+
         // Auto Update
         String string = config.getString("auto-update", "true");
         Byte result = ParseUtils.matchUpdate(string);
@@ -485,6 +488,10 @@ public final class AbyssPlugin extends JavaPlugin {
         } else {
             autoUpdate = result;
         }
+
+
+        // Metrics
+        useMetrics = config.getBoolean("use-metrics", true);
 
 
         // Portal Wand
