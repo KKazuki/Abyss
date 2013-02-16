@@ -25,6 +25,7 @@ public class WandCommand extends ABCommand {
 
         minimumArguments = 1;
         try_block = true;
+        allow_wand = false;
 
         usage = "<uses> [command] <arguments>";
         description = "Create a wand for the given command, optionally with the" +

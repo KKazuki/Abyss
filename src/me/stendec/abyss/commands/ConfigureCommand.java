@@ -26,7 +26,7 @@ public class ConfigureCommand extends ABCommand {
         require_portal = true;
         minimumArguments = 1;
 
-        usage = "<[key: value]; ...>";
+        usage = "[<[key]: value>; ...]";
         description = "Apply the given configuration to the targeted portal.";
     }
 
