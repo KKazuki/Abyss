@@ -284,12 +284,14 @@ public final class AbyssPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Destroy the task.
-        task.cancel();
-        task = null;
-
         // Save the portals before we leave.
         savePortals();
+
+        // Destroy the task.
+        if ( task != null ) {
+            task.cancel();
+            task = null;
+        }
 
         // Destroy the manager before we leave.
         manager = null;
