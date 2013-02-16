@@ -239,8 +239,14 @@ public class ParseUtils {
 
         final String[] pairs = value.split("\\s*,\\s*", 4);
 
-        if ( pairs.length == 4 )
-            world = Bukkit.getWorld(pairs[3]);
+        if ( pairs.length == 4 ) {
+            try {
+                world = Bukkit.getWorld(UUID.fromString(pairs[3]));
+            } catch(IllegalArgumentException ex) { }
+
+            if ( world == null )
+                world = Bukkit.getWorld(pairs[3]);
+        }
 
         if ( world == null )
             return null;
