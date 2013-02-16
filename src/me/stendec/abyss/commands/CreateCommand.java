@@ -6,6 +6,7 @@ import me.stendec.abyss.ABPortal;
 import me.stendec.abyss.AbyssPlugin;
 import me.stendec.abyss.PortalManager;
 import me.stendec.abyss.util.EntityUtils;
+import me.stendec.abyss.util.IterUtils;
 import me.stendec.abyss.util.ParseUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -18,6 +19,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Map;
 
 public class CreateCommand extends ABCommand {
@@ -92,27 +94,21 @@ public class CreateCommand extends ABCommand {
                     valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
                 }
 
-            } else if ( plugin.squareOnly ) {
-                final int min = Math.max(plugin.minimumSizeX, plugin.minimumSizeZ);
-                final int max = Math.min(plugin.maximumSizeX, plugin.maximumSizeZ);
+            } else {
+                for(final Iterator<IterUtils.Size> it = new IterUtils.SizeIterator(plugin); it.hasNext(); ) {
+                    final IterUtils.Size sz = it.next();
 
-                for( size_x = (short) min; size_x <= max; size_x++ ) {
-                    size_z = size_x;
+                    size_x = sz.x; size_z = sz.z;
                     valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
                     if ( valid )
                         break;
-                }
 
-            } else {
-                for ( size_x = plugin.minimumSizeX; size_x <= plugin.maximumSizeX; size_x++ ) {
-                    for ( size_z = plugin.minimumSizeZ; size_z <= plugin.maximumSizeZ; size_z++ ) {
+                    if ( size_x != size_z ) {
+                        size_x = sz.z; size_z = sz.x;
                         valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
                         if ( valid )
                             break;
                     }
-
-                    if ( valid )
-                        break;
                 }
             }
         }

@@ -135,6 +135,9 @@ public final class AbyssPlugin extends JavaPlugin {
     // Entity Whitelist
     public HashSet<EntityType> entityTypeWhitelist;
 
+    // Metrics
+    private Metrics metrics;
+
     // Command Storage
     public HashMap<String, ABCommand> commands;
     public HashMap<String, String> aliases;
@@ -270,6 +273,11 @@ public final class AbyssPlugin extends JavaPlugin {
         if ( autoUpdate != 0 )
             startUpdater(autoUpdate);
 
+
+        // And while we're at it, lets get some metrics!
+        startMetrics();
+
+
     }
 
     @Override
@@ -343,6 +351,82 @@ public final class AbyssPlugin extends JavaPlugin {
                 getServer().getConsoleSender().sendMessage(updateMessage);
             }
         }
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Metrics
+    ///////////////////////////////////////////////////////////////////////////
+
+    private void startMetrics() {
+        // If we've already got metrics, just make sure it's started and leave.
+        if ( metrics != null ) {
+            metrics.start();
+            return;
+        }
+
+        try {
+            metrics = new Metrics(this);
+        } catch(IOException ex) {
+            getLogger().warning(ex.getMessage());
+            return;
+        }
+
+
+        // Total Portals
+        metrics.addCustomData(new Metrics.Plotter("Total Portals") {
+            @Override
+            public int getValue() { return manager.size(); }
+        });
+
+
+        // Total Portal Owners
+        metrics.addCustomData(new Metrics.Plotter("Owners") {
+            @Override
+            public int getValue() { return manager.getOwners().size(); }
+        });
+
+
+        // Using WorldGuard
+        Metrics.Graph graph = metrics.createGraph("WorldGuard Portal Manager");
+        graph.addPlotter(new Metrics.Plotter("WorldGuard Portal Manager") {
+            @Override
+            public int getValue() { return 1; }
+
+            @Override
+            public String getColumnName() {
+                if ( ! useWorldGuard )
+                    return "Disabled";
+
+                return ( manager instanceof WorldGuardManager ) ? "Enabled" : "Not Found";
+            }
+
+        });
+
+
+        // Portal Size
+        graph = metrics.createGraph("Portal Size");
+        for(final Iterator<IterUtils.Size> it = new IterUtils.SizeIterator(this); it.hasNext(); ) {
+            final IterUtils.Size sz = it.next();
+            graph.addPlotter(new Metrics.Plotter(sz.toString()) {
+                @Override
+                public int getValue() {
+                    int count = 0;
+                    for(final Iterator<ABPortal> it = manager.iterator(); it.hasNext(); ) {
+                        final ABPortal portal = it.next();
+                        final int x = portal.getSizeX(), z = portal.getSizeZ();
+                        if (( sz.x == x && sz.z == z ) || ( sz.x == z && sz.z == x ))
+                            count++;
+                    }
+
+                    return count;
+                }
+            });
+        }
+
+
+        // Finally, start it.
+        metrics.start();
     }
 
 
@@ -1396,7 +1480,7 @@ public final class AbyssPlugin extends JavaPlugin {
 
         Iterator<ModInfo> it = to.mods.iterator();
         if ( from != null )
-            it = new IteratorChain<ModInfo>(from.mods.iterator(), it);
+            it = new IterUtils.IteratorChain<ModInfo>(from.mods.iterator(), it);
 
         for(; it.hasNext(); ) {
             final ModInfo info = it.next();
@@ -1519,7 +1603,7 @@ public final class AbyssPlugin extends JavaPlugin {
         // Post-Teleportation Modifiers
         it = to.mods.iterator();
         if ( from != null )
-            it = new IteratorChain<ModInfo>(from.mods.iterator(), it);
+            it = new IterUtils.IteratorChain<ModInfo>(from.mods.iterator(), it);
 
         for(; it.hasNext(); ) {
             final ModInfo info = it.next();
