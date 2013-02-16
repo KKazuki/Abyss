@@ -404,6 +404,26 @@ public final class AbyssPlugin extends JavaPlugin {
         });
 
 
+        // Modifiers
+        graph = metrics.createGraph("Portal Modifiers");
+        for(final Material mat: PortalModifier.keys()) {
+            graph.addPlotter(new Metrics.Plotter(ParseUtils.prettyName(mat)) {
+                @Override
+                public int getValue() {
+                    int count = 0;
+                    for(final Iterator<ABPortal> it = manager.iterator(); it.hasNext(); ) {
+                        final ABPortal portal = it.next();
+                        if ( portal.mods != null )
+                            for(final ModInfo info: portal.mods)
+                                if ( info.item != null && info.item.getType() == mat )
+                                    count++;
+                    }
+                    return count;
+                }
+            });
+        }
+
+
         // Portal Size
         graph = metrics.createGraph("Portal Size");
         for(final Iterator<IterUtils.Size> it = new IterUtils.SizeIterator(this); it.hasNext(); ) {

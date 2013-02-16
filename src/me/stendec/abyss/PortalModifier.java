@@ -11,6 +11,7 @@ import org.bukkit.permissions.Permission;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
+import java.util.Set;
 
 public abstract class PortalModifier {
 
@@ -23,6 +24,11 @@ public abstract class PortalModifier {
     public final static void register(final PortalModifier modifier, final Material... materials) {
         for(final Material m: materials)
             modifiers.put(m, modifier);
+    }
+
+    public final static Material[] keys() {
+        Set<Material> k = modifiers.keySet();
+        return k.toArray(new Material[k.size()]);
     }
 
     public final static PortalModifier get(final Material material) {
