@@ -1,0 +1,25 @@
+{{http://dev.bukkit.org/media/images/51/340/Abyss.png|Abyss}}
+
+Abyss is a flexible portal system designed for players. In Abyss, a portal is a square pool of water, no smaller than two by two blocks, and no shallower than two blocks deep. Portals are linked together into networks, and travel between them is //optionally// limited by distance. Portals can go to other worlds, and minecarts can make use of portals.
+
+Traveling through a portal is easy. Just jump in, and you'll be instantly ejected out of the first available destination. Momentum is preserved through portals, and minecarts will be placed on rails when at all possible.
+
+\\
+
+[[http://dev.bukkit.org/server-mods/abyss/|Get Abyss from BukkitDev]]
+
+\\
+
+== Trailer ==
+
+There is a trailer available on YouTube: [[http://youtu.be/Gdw9VprD7Uc|Abyss Trailer]]
+
+\\
+
+== Dependencies ==
+
+ * Bukkit 1.4.7-R1.0
+ * Multiverse-Core
+ * Vault
+ * WorldEdit
+ * WorldGuard
