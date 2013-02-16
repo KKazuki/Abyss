@@ -1,4 +1,4 @@
-{{http://dev.bukkit.org/media/images/51/340/Abyss.png|Abyss}}
+{{http://i.imgur.com/fhBwq5J.jpg|Abyss}}
 
 Abyss is a flexible portal system designed for players. In Abyss, a portal is a square pool of water, no smaller than two by two blocks, and no shallower than two blocks deep. Portals are linked together into networks, and travel between them is //optionally// limited by distance. Portals can go to other worlds, and minecarts can make use of portals.
 
