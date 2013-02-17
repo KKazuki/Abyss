@@ -17,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.permissions.Permission;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -45,11 +46,22 @@ public class CreateCommand extends ABCommand {
             return false;
         }
 
+
+        // Check the world.
+        final String wname = target.getWorld().getName();
+        Permission perm = plugin.getServer().getPluginManager().getPermission("abyss.world." + wname);
+        if ( perm != null && !sender.hasPermission(perm) ) {
+            t().red("You do not have permission to create a portal in this world.").send(sender);
+            return false;
+        }
+
+
         // Make sure we have a water block.
         if (!AbyssPlugin.validLiquid(target)) {
             t().red("Invalid portal location.").send(sender);
             return false;
         }
+
 
         // Default Configuration
         short size_x = -1;
@@ -84,7 +96,7 @@ public class CreateCommand extends ABCommand {
                     t("    ").gray().bold("force size").gray(" must be at least 1x1.").send(sender);
                     return false;
                 }
-            } else if ( size_x < 2 || size_z < 2) {
+            } else if ( size_x < 2 || size_z < 2 ) {
                 t().red("Configuration Error").send(sender);
                 t("    ").gray().bold("size").gray(" must be at least 2x2.").send(sender);
                 return false;
@@ -147,9 +159,11 @@ public class CreateCommand extends ABCommand {
         // Check for the required depth.
         int depth = plugin.getDepthAt(loc, size_x, size_z);
         if ( force ) {
-            t().yellow(ChatColor.GOLD, "Portals must be at least %d blocks deep. This space is %d blocks deep.",
-                    1, depth).send(sender);
-            depth = 1;
+            if ( depth < 1 ) {
+                t().yellow(ChatColor.GOLD, "Portals must be at least %d blocks deep. This space is %d blocks deep.",
+                        1, depth).send(sender);
+                depth = 1;
+            }
         } else if ( depth < plugin.minimumDepth ) {
             t().red(ChatColor.DARK_RED, "Portals must be at least %d blocks deep. This space is " +
                     "%d blocks deep.", plugin.minimumDepth, depth).send(sender);
