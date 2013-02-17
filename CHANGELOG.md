@@ -1,3 +1,19 @@
+## Version 8: February 17, 2013 ##
+
+ * [Source Code][v8]
+
+### Added ###
+ * Portals smaller than 2x2 can be created using the ``force size`` parameter for the **Create** command.
+ * The ability to create portals can be restricted on a per-world basis using the ``abyss.world.<worldname>`` permission.
+
+### Fixed ###
+ * Fixed a bug when disabling the plugin when ``use-static-effect`` is ``false``.
+ * Fixed a bug with EntityExplodeEvent when no blocks are going to be destroyed.
+ * Worlds may be specified by UUID for commands taking block or portal coordinates.
+
+&nbsp;
+
+
 ## Version 7: February 16, 2013 ##
 
  * **Note:** This is a release candidate, baring any bug reports from users.
@@ -111,6 +127,7 @@
  * No changes.
 
 
+[v8]: https://github.com/stendec/Abyss/tree/v8
 [v7]: https://github.com/stendec/Abyss/tree/v7
 [v6]: https://github.com/stendec/Abyss/tree/v6
 [v5]: https://github.com/stendec/Abyss/tree/v5
