@@ -333,6 +333,8 @@ public class BlockListener implements Listener {
         // Get the bounding box for all the blocks involved.
         final List<Block> blocks = event.blockList();
         Location[] cube = BlockUtils.getBoundsBlocks(blocks);
+        if ( cube == null )
+            return;
 
         // Now, see if any portals are involved.
         final ArrayList<ABPortal> portals = plugin.getManager().getWithin(cube[0], cube[1]);
