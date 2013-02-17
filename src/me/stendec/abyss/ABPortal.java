@@ -357,8 +357,8 @@ public class ABPortal implements Comparable<ABPortal> {
 
         boolean changed = false;
         short new_depth = plugin.getDepthAt(loc, size_x, size_z);
-        if ( new_depth < plugin.minimumDepth )
-            new_depth = plugin.minimumDepth;
+        if ( new_depth < 1 )
+            new_depth = 1;
 
         final boolean new_valid = checkValid();
 
@@ -622,8 +622,8 @@ public class ABPortal implements Comparable<ABPortal> {
 
         // Set our new depth.
         depth = plugin.getDepthAt(loc, sx, sz);
-        if ( depth < plugin.minimumDepth )
-            depth = plugin.minimumDepth;
+        if ( depth < 1 )
+            depth = 1;
 
         destroyEntities(true);
 
@@ -713,6 +713,13 @@ public class ABPortal implements Comparable<ABPortal> {
         BlockState south = null;
         BlockState east = null;
         BlockState west = null;
+        BlockState bs = null;
+
+        // Make sure there's a solid block where we want to spawn the item frame.
+        if ( ! spawn.getType().isSolid() ) {
+            bs = spawn.getState();
+            spawn.setType(Material.STONE);
+        }
 
         // Make sure there's exactly 1 air block for the frame to spawn into.
         Block b = spawn.getRelative(BlockFace.NORTH);
@@ -759,6 +766,7 @@ public class ABPortal implements Comparable<ABPortal> {
         } catch(IllegalArgumentException ex) {}
         finally {
             // Now replace the blocks we replaced.
+            if (bs != null) bs.update(true);
             if (north != null) north.update(true);
             if (east != null) east.update(true);
             if (south != null) south.update(true);
@@ -823,12 +831,12 @@ public class ABPortal implements Comparable<ABPortal> {
         if (!frames.isEmpty())
             return;
 
-        ItemFrame if_network;
-        ItemFrame if_color;
-        ItemFrame if_id1;
-        ItemFrame if_id2;
-        ItemFrame if_dest1;
-        ItemFrame if_dest2;
+        ItemFrame if_network = null;
+        ItemFrame if_color = null;
+        ItemFrame if_id1 = null;
+        ItemFrame if_id2 = null;
+        ItemFrame if_dest1 = null;
+        ItemFrame if_dest2 = null;
 
         // Make sure we have mods.
         if (mods == null) {
@@ -851,77 +859,112 @@ public class ABPortal implements Comparable<ABPortal> {
         final int odd_x = size_x % 2, odd_z = size_z % 2;
 
         if ( rotation == Rotation.CLOCKWISE ) {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(size_x - 1, 0, half_z), BlockFace.WEST);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(size_x - 1, 0, half_z + 1 + odd_z), BlockFace.WEST);
+            if ( size_z == 1 )
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(size_x - 1, 0, 0), BlockFace.WEST);
+            else {
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(size_x - 1, 0, half_z), BlockFace.WEST);
+                if_color = setFrame(FrameInfo.Frame.COLOR, l(size_x - 1, 0, half_z + 1 + odd_z), BlockFace.WEST);
+            }
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size_x- 2, 0, 0), BlockFace.SOUTH);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size_x - 1, 0, 0), BlockFace.SOUTH);
+            if ( size_x > 1 ) {
+                if_id1 = setFrame(FrameInfo.Frame.ID1, l(size_x- 2, 0, 0), BlockFace.SOUTH);
+                if_id2 = setFrame(FrameInfo.Frame.ID2, l(size_x - 1, 0, 0), BlockFace.SOUTH);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size_x - 1, 0, size_z - 1), BlockFace.NORTH);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size_x - 2, 0, size_z - 1), BlockFace.NORTH);
+                if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size_x - 1, 0, size_z - 1), BlockFace.NORTH);
+                if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size_x - 2, 0, size_z - 1), BlockFace.NORTH);
+            }
 
             // Iterate through the mods, making frames.
-            Location ml = l(size_x - 1, -1, (size_z - mods.size()) / 2);
-            for(final ModInfo info: mods) {
-                setModFrame(info, ml, BlockFace.WEST);
-                ml.add(0, 0, 1);
+            if ( depth > 1 ) {
+                Location ml = l(size_x - 1, -1, (size_z - mods.size()) / 2);
+                for(final ModInfo info: mods) {
+                    setModFrame(info, ml, BlockFace.WEST);
+                    ml.add(0, 0, 1);
+                }
             }
 
         } else if ( rotation == Rotation.FLIPPED ) {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half_x + 1 + odd_x, 0, size_z - 1), BlockFace.NORTH);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(half_x, 0, size_z - 1), BlockFace.NORTH);
+            if ( size_x == 1 )
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, size_z - 1), BlockFace.NORTH);
+            else {
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(half_x + 1 + odd_x, 0, size_z - 1), BlockFace.NORTH);
+                if_color = setFrame(FrameInfo.Frame.COLOR, l(half_x, 0, size_z - 1), BlockFace.NORTH);
+            }
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(size_x - 1, 0, size_z - 2), BlockFace.WEST);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(size_x - 1, 0, size_z - 1), BlockFace.WEST);
+            if ( size_z > 1 ) {
+                if_id1 = setFrame(FrameInfo.Frame.ID1, l(size_x - 1, 0, size_z - 2), BlockFace.WEST);
+                if_id2 = setFrame(FrameInfo.Frame.ID2, l(size_x - 1, 0, size_z - 1), BlockFace.WEST);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, size_z - 1), BlockFace.EAST);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(0, 0, size_z - 2), BlockFace.EAST);
+                if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, size_z - 1), BlockFace.EAST);
+                if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(0, 0, size_z - 2), BlockFace.EAST);
+            }
 
             // Iterate through the mods, making frames.
-            Location ml = l(size_x - (1 + ((size_x - mods.size()) / 2)), -1, size_z-1);
-            for(final ModInfo info: mods) {
-                setModFrame(info, ml, BlockFace.NORTH);
-                ml.add(-1, 0, 0);
+            if ( depth > 1 ) {
+                Location ml = l(size_x - (1 + ((size_x - mods.size()) / 2)), -1, size_z-1);
+                for(final ModInfo info: mods) {
+                    setModFrame(info, ml, BlockFace.NORTH);
+                    ml.add(-1, 0, 0);
+                }
             }
 
         } else if ( rotation == Rotation.COUNTER_CLOCKWISE ) {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, half_z + 1 + odd_z), BlockFace.EAST);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(0, 0, half_z), BlockFace.EAST);
+            if ( size_z == 1 )
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, 0), BlockFace.EAST);
+            else {
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, half_z + 1 + odd_z), BlockFace.EAST);
+                if_color = setFrame(FrameInfo.Frame.COLOR, l(0, 0, half_z), BlockFace.EAST);
+            }
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(1, 0, size_z - 1), BlockFace.NORTH);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, size_z - 1), BlockFace.NORTH);
+            if ( size_x > 1 ) {
+                if_id1 = setFrame(FrameInfo.Frame.ID1, l(1, 0, size_z - 1), BlockFace.NORTH);
+                if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, size_z - 1), BlockFace.NORTH);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, 0), BlockFace.SOUTH);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(1, 0, 0), BlockFace.SOUTH);
+                if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(0, 0, 0), BlockFace.SOUTH);
+                if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(1, 0, 0), BlockFace.SOUTH);
+            }
 
             // Iterate through the mods, making frames.
-            Location ml = l(0, -1, size_z - (1 + ((size_z - mods.size()) / 2)));
-            for(ModInfo info: mods) {
-                setModFrame(info, ml, BlockFace.EAST);
-                ml.add(0, 0, -1);
+            if ( depth > 1 ) {
+                Location ml = l(0, -1, size_z - (1 + ((size_z - mods.size()) / 2)));
+                for(ModInfo info: mods) {
+                    setModFrame(info, ml, BlockFace.EAST);
+                    ml.add(0, 0, -1);
+                }
             }
 
         } else {
-            if_network = setFrame(FrameInfo.Frame.NETWORK, l(half_x, 0, 0), BlockFace.SOUTH);
-            if_color = setFrame(FrameInfo.Frame.COLOR, l(half_x + 1 + odd_x, 0, 0), BlockFace.SOUTH);
+            if ( size_x == 1 )
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(0, 0, 0), BlockFace.SOUTH);
+            else {
+                if_network = setFrame(FrameInfo.Frame.NETWORK, l(half_x, 0, 0), BlockFace.SOUTH);
+                if_color = setFrame(FrameInfo.Frame.COLOR, l(half_x + 1 + odd_x, 0, 0), BlockFace.SOUTH);
+            }
 
-            if_id1 = setFrame(FrameInfo.Frame.ID1, l(0, 0, 1), BlockFace.EAST);
-            if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, 0), BlockFace.EAST);
+            if ( size_z > 1 ) {
+                if_id1 = setFrame(FrameInfo.Frame.ID1, l(0, 0, 1), BlockFace.EAST);
+                if_id2 = setFrame(FrameInfo.Frame.ID2, l(0, 0, 0), BlockFace.EAST);
 
-            if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size_x - 1, 0, 0), BlockFace.WEST);
-            if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size_x - 1, 0, 1), BlockFace.WEST);
+                if_dest1 = setFrame(FrameInfo.Frame.DEST1, l(size_x - 1, 0, 0), BlockFace.WEST);
+                if_dest2 = setFrame(FrameInfo.Frame.DEST2, l(size_x - 1, 0, 1), BlockFace.WEST);
+            }
 
             // Iterate through the mods, making frames.
-            Location ml = l((size_x - mods.size()) / 2, -1, 0);
-            for(ModInfo info: mods) {
-                setModFrame(info, ml, BlockFace.SOUTH);
-                ml.add(1, 0, 0);
+            if ( depth > 1 ) {
+                Location ml = l((size_x - mods.size()) / 2, -1, 0);
+                for(ModInfo info: mods) {
+                    setModFrame(info, ml, BlockFace.SOUTH);
+                    ml.add(1, 0, 0);
+                }
             }
         }
 
         // Now that we've got the frames, update them all.
-        if_network.setItem(network);
-        if_color.setItem(new ItemStack(Material.WOOL, 1, color.getWoolData()));
+        if ( if_network != null )
+            if_network.setItem(network);
+
+        if ( if_color != null )
+            if_color.setItem(new ItemStack(Material.WOOL, 1, color.getWoolData()));
 
         setIDFrames(id, if_id1, if_id2);
         setIDFrames(destination, if_dest1, if_dest2);

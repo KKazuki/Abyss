@@ -71,16 +71,6 @@ public class ParseUtils {
         return result;
     }
 
-    public static String updateString(final Byte value) {
-        if ( value == 0 )
-            return "false";
-        else if ( value == 1 )
-            return "check";
-        else if ( value == 2 )
-            return "true";
-
-        return null;
-    }
 
     public static short[] matchSize(final String value) {
         if ( value == null )
@@ -94,7 +84,7 @@ public class ParseUtils {
         else if ( filtered.contains(",") )
             pair = filtered.split("\\s*,\\s*", 2);
         else
-            return null;
+            pair = new String[]{filtered, filtered};
 
         try {
             return new short[]{Short.parseShort(pair[0]), Short.parseShort(pair[1])};

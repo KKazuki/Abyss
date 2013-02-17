@@ -58,6 +58,13 @@ public class CreateCommand extends ABCommand {
         // First, tokenize our configuration.
         Map<String, String> config = ParseUtils.tokenize(Joiner.on(" ").skipNulls().join(args));
 
+        // Do we have a force size?
+        boolean force = false;
+        if ( config.containsKey("force size") ) {
+            force = true;
+            config.put("size", config.remove("force size"));
+        }
+
         // Do we have a size value?
         if ( config.containsKey("size") ) {
             final String sz = config.remove("size");
@@ -71,7 +78,13 @@ public class CreateCommand extends ABCommand {
             size_x = size[0];
             size_z = size[1];
 
-            if ( size_x < 2 || size_z < 2) {
+            if ( force ) {
+                if ( size_x < 1 || size_z < 1 ) {
+                    t().red("Configuration Error").send(sender);
+                    t("    ").gray().bold("force size").gray(" must be at least 1x1.").send(sender);
+                    return false;
+                }
+            } else if ( size_x < 2 || size_z < 2) {
                 t().red("Configuration Error").send(sender);
                 t("    ").gray().bold("size").gray(" must be at least 2x2.").send(sender);
                 return false;
@@ -82,32 +95,37 @@ public class CreateCommand extends ABCommand {
         final Location loc = plugin.findRoot(target.getLocation());
         boolean valid = false;
 
-        if ( loc != null ) {
-            if ( size_x != -1 ) {
-                valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+        if ( force ) {
+            valid = true;
 
-                if ( ! valid ) {
-                    final short t = size_z;
-                    size_z = size_x;
-                    size_x = t;
-
+        } else {
+            if ( loc != null ) {
+                if ( size_x != -1 ) {
                     valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
-                }
 
-            } else {
-                for(final Iterator<IterUtils.Size> it = new IterUtils.SizeIterator(plugin); it.hasNext(); ) {
-                    final IterUtils.Size sz = it.next();
+                    if ( ! valid ) {
+                        final short t = size_z;
+                        size_z = size_x;
+                        size_x = t;
 
-                    size_x = sz.x; size_z = sz.z;
-                    valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
-                    if ( valid )
-                        break;
+                        valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+                    }
 
-                    if ( size_x != size_z ) {
-                        size_x = sz.z; size_z = sz.x;
+                } else {
+                    for(final Iterator<IterUtils.Size> it = new IterUtils.SizeIterator(plugin); it.hasNext(); ) {
+                        final IterUtils.Size sz = it.next();
+
+                        size_x = sz.x; size_z = sz.z;
                         valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
                         if ( valid )
                             break;
+
+                        if ( size_x != size_z ) {
+                            size_x = sz.z; size_z = sz.x;
+                            valid = plugin.validLayer(loc, (short) 0, size_x, size_z) != null;
+                            if ( valid )
+                                break;
+                        }
                     }
                 }
             }
@@ -128,7 +146,11 @@ public class CreateCommand extends ABCommand {
 
         // Check for the required depth.
         int depth = plugin.getDepthAt(loc, size_x, size_z);
-        if ( depth < plugin.minimumDepth ) {
+        if ( force ) {
+            t().yellow(ChatColor.GOLD, "Portals must be at least %d blocks deep. This space is %d blocks deep.",
+                    1, depth).send(sender);
+            depth = 1;
+        } else if ( depth < plugin.minimumDepth ) {
             t().red(ChatColor.DARK_RED, "Portals must be at least %d blocks deep. This space is " +
                     "%d blocks deep.", plugin.minimumDepth, depth).send(sender);
             return false;
